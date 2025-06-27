@@ -103,7 +103,36 @@ npm start
 
 ## 部署选项
 
-### 🌟 Azure Web App部署（推荐）
+### 🚀 Vercel部署（推荐）
+使用Vercel进行快速云端部署：
+
+**一键部署:**
+```bash
+# 使用快速部署脚本
+chmod +x vercel-deploy.sh
+./vercel-deploy.sh
+
+# 或手动部署
+npm install -g vercel
+vercel login
+vercel --prod
+```
+
+**性能测试:**
+```bash
+# 部署完成后测试性能
+chmod +x test-vercel-performance.sh
+./test-vercel-performance.sh
+```
+
+**故障排查:**
+如遇网络访问问题，详见：`VERCEL-TROUBLESHOOTING.md`
+
+配置文件：
+- `vercel.json` - Vercel部署配置
+- `VERCEL-DEPLOYMENT-GUIDE.md` - 详细部署指南
+
+### 🌟 Azure Web App部署
 使用Azure App Service进行快速部署：
 
 **快速部署:**
@@ -150,6 +179,45 @@ docker build -t netfasttest .
 # 运行容器
 docker run -d -p 3000:3000 --name netfasttest netfasttest
 ```
+
+## 生产环境注意事项
+
+### Node.js版本选择
+- **推荐**: Node.js 20 LTS（长期支持版本）
+- **支持**: Node.js 18.17+ 和 Node.js 22+
+- 详见：`NODEJS-VERSION-GUIDE.md`
+
+### 网络访问问题
+如果部署后无法访问（特别是Vercel），可能的原因：
+1. **网络防火墙限制**: 某些网络环境可能限制访问Vercel
+2. **DNS解析问题**: 尝试更换DNS服务器（如8.8.8.8）
+3. **SSL连接超时**: 网络环境对SSL握手的限制
+
+**解决方案**:
+- 使用VPN或代理访问
+- 选择其他部署平台（Azure、ECS等）
+- 联系网络管理员确认访问权限
+
+### 性能优化建议
+1. **API响应优化**: 地理位置查询与延迟测量分离
+2. **缓存策略**: 合理设置HTTP缓存头
+3. **CDN加速**: 利用全球CDN节点
+4. **监控告警**: 设置性能监控和异常告警
+
+## 技术支持
+
+### 部署相关文档
+- `VERCEL-DEPLOYMENT-GUIDE.md` - Vercel部署指南
+- `VERCEL-TROUBLESHOOTING.md` - Vercel故障排查
+- `AZURE-DEPLOYMENT-GUIDE.md` - Azure部署指南
+- `ECS-MANUAL-DEPLOYMENT.md` - ECS手动部署指南
+- `NODEJS-VERSION-GUIDE.md` - Node.js版本选择指南
+
+### 脚本工具
+- `vercel-deploy.sh` - Vercel快速部署脚本
+- `test-vercel-performance.sh` - Vercel性能测试脚本
+- `azure-quick-deploy.sh` - Azure快速部署脚本
+- `ecs-auto-deploy.sh` - ECS自动部署脚本
 
 ## 许可证
 
