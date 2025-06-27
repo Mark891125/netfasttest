@@ -106,6 +106,13 @@ npm start
 ### 🚀 Vercel部署（推荐）
 使用Vercel进行快速云端部署：
 
+**部署前检查:**
+```bash
+# 运行部署前检查，确保配置正确
+chmod +x vercel-precheck.sh
+./vercel-precheck.sh
+```
+
 **一键部署:**
 ```bash
 # 使用快速部署脚本
@@ -125,11 +132,17 @@ chmod +x test-vercel-performance.sh
 ./test-vercel-performance.sh
 ```
 
+**常见问题修复:**
+- 如遇到 `builds` 和 `functions` 冲突错误，已自动修复
+- 配置文件已优化兼容 Next.js 15.3.4
+- 支持 Node.js 18+ 和 20 LTS
+
 **故障排查:**
 如遇网络访问问题，详见：`VERCEL-TROUBLESHOOTING.md`
 
 配置文件：
 - `vercel.json` - Vercel部署配置
+- `vercel.simple.json` - 简化配置模板
 - `VERCEL-DEPLOYMENT-GUIDE.md` - 详细部署指南
 
 ### 🌟 Azure Web App部署
@@ -214,6 +227,7 @@ docker run -d -p 3000:3000 --name netfasttest netfasttest
 - `NODEJS-VERSION-GUIDE.md` - Node.js版本选择指南
 
 ### 脚本工具
+- `vercel-precheck.sh` - Vercel部署前检查脚本
 - `vercel-deploy.sh` - Vercel快速部署脚本
 - `test-vercel-performance.sh` - Vercel性能测试脚本
 - `azure-quick-deploy.sh` - Azure快速部署脚本
