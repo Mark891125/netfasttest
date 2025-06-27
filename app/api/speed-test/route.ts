@@ -73,7 +73,7 @@ interface SpeedTestResult {
 }
 
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
+  const serverReceiveTime = Date.now();
   
   // 获取客户端IP
   const forwarded = request.headers.get('x-forwarded-for');
@@ -85,10 +85,10 @@ export async function POST(request: NextRequest) {
   const contentLength = request.headers.get('content-length') || '0';
   
   try {
-    await request.json(); // 读取请求体
+    const requestBody = await request.json(); // 读取请求体
+    const clientSendTime = requestBody.timestamp || serverReceiveTime; // 客户端发送时间戳
     
-    const endTime = Date.now();
-    const responseTime = endTime - startTime; // 纯网络响应时间，不包括任何外部查询
+    const responseTime = serverReceiveTime - clientSendTime; // 真正的网络传输时间（客户端发送到服务器接收）
     
     // 创建基础测试结果，先不包含地理位置信息
     const result: SpeedTestResult = {
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
     
     // 打印响应时间信息
-    console.log(`[${result.timestamp}] IP: ${result.ip} | 位置: ${result.location} | 响应时间: ${result.responseTime}ms | 大小: ${result.requestSize}bytes`);
+    console.log(`[${result.timestamp}] IP: ${result.ip} | 位置: ${result.location} | 网络延迟: ${result.responseTime}ms | 大小: ${result.requestSize}bytes | 客户端发送时间: ${new Date(clientSendTime).toLocaleString()}`);
     
     return NextResponse.json({
       success: true,
@@ -134,15 +134,29 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
+  const serverReceiveTime = Date.now();
   
   // 获取客户端IP
   const forwarded = request.headers.get('x-forwarded-for');
   const realIp = request.headers.get('x-real-ip');
   const clientIp = forwarded ? forwarded.split(',')[0] : realIp || '127.0.0.1';
   
-  const endTime = Date.now();
-  const responseTime = endTime - startTime; // 纯响应时间
+  // 从查询参数获取客户端发送时间戳
+  const url = new URL(request.url);
+  const clientSendTime = parseInt(url.searchParams.get('timestamp') || serverReceiveTime.toString());
+  
+  // 检查是否是获取服务器时间的请求
+  if (url.searchParams.get('action') === 'get-server-time') {
+    return NextResponse.json({
+      success: true,
+      data: {
+        serverTime: serverReceiveTime,
+        timestamp: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+      }
+    });
+  }
+  
+  const responseTime = serverReceiveTime - clientSendTime; // 网络传输延迟
   
   // 默认地理位置信息
   let location = '本地网络';
@@ -158,7 +172,7 @@ export async function GET(request: NextRequest) {
   }
   
   // 打印到标准输出
-  console.log(`[${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}] GET IP: ${clientIp} | 位置: ${location} | 响应时间: ${responseTime}ms`);
+  console.log(`[${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}] GET IP: ${clientIp} | 位置: ${location} | 网络延迟: ${responseTime}ms | 客户端发送时间: ${new Date(clientSendTime).toLocaleString()}`);
   
   return NextResponse.json({
     success: true,

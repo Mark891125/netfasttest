@@ -23,6 +23,7 @@ export default function Home() {
   const [currentTest, setCurrentTest] = useState<TestResult | null>(null);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [timeDiff, setTimeDiff] = useState<number>(0); // 服务器时间与本地时间的差值
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
@@ -30,7 +31,39 @@ export default function Home() {
     if (saved) {
       setTestHistory(JSON.parse(saved));
     }
+    
+    // 页面加载时同步服务器时间
+    syncServerTime();
   }, []);
+
+  // 同步服务器时间
+  const syncServerTime = async () => {
+    try {
+      const clientRequestTime = Date.now();
+      const response = await fetch('/api/speed-test?action=get-server-time');
+      const clientReceiveTime = Date.now();
+      
+      if (response.ok) {
+        const result = await response.json();
+        const serverTime = result.data.serverTime;
+        
+        // 计算网络延迟的一半作为估算的单程延迟
+        const networkDelay = (clientReceiveTime - clientRequestTime) / 2;
+        
+        // 估算服务器当前时间（考虑网络延迟）
+        const estimatedServerTime = serverTime + networkDelay;
+        
+        // 计算时间差（服务器时间 - 本地时间）
+        const diff = estimatedServerTime - clientReceiveTime;
+        setTimeDiff(diff);
+        
+        console.log(`时间同步完成: 服务器时间差值 ${diff.toFixed(2)}ms, 网络延迟: ${networkDelay.toFixed(2)}ms`);
+      }
+    } catch (error) {
+      console.error('服务器时间同步失败:', error);
+      setTimeDiff(0); // 同步失败时使用本地时间
+    }
+  };
 
   // 保存历史记录到sessionStorage
   const saveToHistory = (result: TestResult) => {
@@ -43,21 +76,28 @@ export default function Home() {
   const runLatencyTest = async () => {
     setIsLoading(true);
     try {
+      const clientLocalTime = Date.now();
+      // 使用同步后的时间差计算服务器时间
+      const serverAdjustedTime = clientLocalTime + timeDiff;
+      
       const response = await fetch('/api/speed-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ test: 'latency' })
+        body: JSON.stringify({ 
+          test: 'latency',
+          timestamp: serverAdjustedTime // 发送调整后的时间戳
+        })
       });
       
       if (response.ok) {
         const result = await response.json();
-        // 直接使用服务器返回的响应时间，保持一致性
+        // 直接使用服务器返回的网络延迟时间
         setCurrentTest(result.data);
         saveToHistory(result.data);
         
-        console.log(`网络延迟测试完成: ${result.data.responseTime}ms`);
+        console.log(`网络延迟测试完成: ${result.data.responseTime}ms (基于服务器时间同步)`);
       }
     } catch (error) {
       console.error('延迟测试失败:', error);
@@ -78,7 +118,12 @@ export default function Home() {
         <div className={styles.container}>
           <div className={styles.header}>
             <h1 className={styles.title}>网络测试</h1>
-            <NetworkStatus className={styles.networkStatus} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#666' }}>
+                时间同步: {timeDiff !== 0 ? `${timeDiff > 0 ? '+' : ''}${timeDiff.toFixed(1)}ms` : '本地时间'}
+              </div>
+              <NetworkStatus className={styles.networkStatus} />
+            </div>
           </div>
           
           <div className={styles.testSection}>
@@ -116,7 +161,7 @@ export default function Home() {
                     <span>{currentTest.location}</span>
                   </div>
                   <div className={styles.resultItem}>
-                    <label>响应时间:</label>
+                    <label>网络延迟:</label>
                     <span>{currentTest.responseTime}ms</span>
                   </div>
                   {currentTest.downloadSpeed && (
