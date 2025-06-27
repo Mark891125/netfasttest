@@ -19,18 +19,31 @@
 ## 配置文件关系
 
 ### 当前生产配置（根目录）
-- **`vercel.json`** - Vercel部署时实际读取的配置
+- **`vercel.json`** - Vercel部署时实际读取的配置（免费计划优化）
   ```json
   {
     "functions": {
       "app/api/speed-test/route.ts": {
         "maxDuration": 30
       }
-    },
-    "regions": ["hkg1", "sin1"],
-    "headers": [...]
+    }
   }
   ```
+
+### 免费计划限制
+
+⚠️ **Vercel免费计划不支持的功能**：
+- ❌ 多区域部署 (`"regions": [...]`)
+- ❌ 自定义域名
+- ❌ 高级缓存配置
+- ❌ 服务器端配置
+
+✅ **免费计划支持的功能**：
+- ✅ Serverless Functions（API路由）
+- ✅ 静态文件托管
+- ✅ 自动SSL证书
+- ✅ 函数超时配置（maxDuration）
+- ✅ 自动区域选择（Vercel会选择最佳区域）
 
 ### 备用模板（docs/templates/）
 

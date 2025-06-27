@@ -110,6 +110,23 @@ check_vercel_config() {
         echo -e "${BLUE}📄 原配置已备份为 vercel.json.backup${NC}"
     fi
     
+    # 检查免费计划限制 - regions配置
+    if jq -e '.regions' vercel.json >/dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  检测到 regions 配置，免费计划不支持多区域部署${NC}"
+        echo -e "${YELLOW}💡 正在自动移除 regions 配置...${NC}"
+        
+        # 创建备份（如果还没有）
+        if [[ ! -f "vercel.json.backup" ]]; then
+            cp vercel.json vercel.json.backup
+        fi
+        
+        # 移除regions配置
+        jq 'del(.regions)' vercel.json > vercel.json.tmp && mv vercel.json.tmp vercel.json
+        
+        echo -e "${GREEN}✅ 已移除 regions 配置，Vercel将自动选择最佳区域${NC}"
+        echo -e "${BLUE}📄 原配置已备份为 vercel.json.backup${NC}"
+    fi
+    
     # 检查版本号
     if jq -e '.version == 2' vercel.json >/dev/null 2>&1; then
         echo -e "${YELLOW}⚠️  检测到 version: 2，建议移除此属性${NC}"

@@ -120,7 +120,41 @@ vercel env add CUSTOM_VAR
 # 在vercel.json中设置maxDuration
 ```
 
-#### 问题4: API路由不工作
+#### 问题4: 多区域部署限制错误
+**错误信息**: 
+- `Deploying Serverless Functions to multiple regions is restricted to the Pro and Enterprise plans`
+- `Multiple regions not available on free plan`
+
+**原因**:
+- Vercel免费计划不支持多区域部署
+- 配置文件中指定了regions数组
+
+**解决方案**:
+```bash
+# 1. 移除regions配置（推荐）
+{
+  "functions": {
+    "app/api/speed-test/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}
+
+# 2. 或使用完全空白配置让Vercel自动处理
+cp docs/templates/vercel.basic.json vercel.json
+
+# 3. 验证配置
+cat vercel.json
+```
+
+**免费计划限制**:
+- ❌ 不支持指定regions
+- ❌ 不支持多区域部署  
+- ❌ 不支持自定义domains
+- ✅ Vercel会自动选择最佳区域
+- ✅ 支持基础serverless functions
+
+#### 问题5: API路由不工作
 **原因**:
 - App Router vs Pages Router混淆
 - TypeScript配置问题
