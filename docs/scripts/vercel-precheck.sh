@@ -195,7 +195,7 @@ test_vercel_connectivity() {
 # 生成部署建议
 generate_suggestions() {
     echo -e "${BLUE}💡 部署建议:${NC}"
-    echo "1. 确保选择合适的区域（亚洲用户建议：hkg1, sin1, nrt1）"
+    echo "1. 确保选择合适的区域（亚洲用户建议：hkg1香港, sin1新加坡）"
     echo "2. 监控首次部署的冷启动时间"
     echo "3. 部署后使用 test-vercel-performance.sh 测试性能"
     echo "4. 如遇网络问题，可考虑 Azure 或 ECS 部署方案"

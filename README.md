@@ -109,15 +109,15 @@ npm start
 **部署前检查:**
 ```bash
 # 运行部署前检查，确保配置正确
-chmod +x vercel-precheck.sh
-./vercel-precheck.sh
+chmod +x docs/scripts/vercel-precheck.sh
+./docs/scripts/vercel-precheck.sh
 ```
 
 **一键部署:**
 ```bash
 # 使用快速部署脚本
-chmod +x vercel-deploy.sh
-./vercel-deploy.sh
+chmod +x docs/scripts/vercel-deploy.sh
+./docs/scripts/vercel-deploy.sh
 
 # 或手动部署
 npm install -g vercel
@@ -128,8 +128,8 @@ vercel --prod
 **性能测试:**
 ```bash
 # 部署完成后测试性能
-chmod +x test-vercel-performance.sh
-./test-vercel-performance.sh
+chmod +x docs/scripts/test-vercel-performance.sh
+./docs/scripts/test-vercel-performance.sh
 ```
 
 **常见问题修复:**
@@ -138,49 +138,37 @@ chmod +x test-vercel-performance.sh
 - 支持 Node.js 18+ 和 20 LTS
 
 **故障排查:**
-如遇网络访问问题，详见：`VERCEL-TROUBLESHOOTING.md`
+如遇网络访问问题，详见：[docs/deployment/VERCEL-TROUBLESHOOTING.md](docs/deployment/VERCEL-TROUBLESHOOTING.md)
 
 配置文件：
-- `vercel.json` - Vercel部署配置
-- `vercel.simple.json` - 简化配置模板
-- `VERCEL-DEPLOYMENT-GUIDE.md` - 详细部署指南
+- `vercel.json` - Vercel部署配置（根目录）
+- `docs/templates/vercel.simple.json` - 简化配置模板
+- `docs/deployment/VERCEL-DEPLOYMENT-GUIDE.md` - 详细部署指南
 
 ### 🌟 Azure Web App部署
 使用Azure App Service进行快速部署：
 
 **快速部署:**
 ```bash
-chmod +x azure-quick-deploy.sh
-./azure-quick-deploy.sh
+chmod +x docs/scripts/azure-quick-deploy.sh
+./docs/scripts/azure-quick-deploy.sh
 ```
 
 **完整部署:**
 ```bash
-chmod +x azure-full-deploy.sh
-./azure-full-deploy.sh
+chmod +x docs/scripts/azure-full-deploy.sh
+./docs/scripts/azure-full-deploy.sh
 ```
 
-详见：`AZURE-CHECKLIST.md` 和 `AZURE-DEPLOYMENT-GUIDE.md`
+详见：[docs/deployment/AZURE-DEPLOYMENT-GUIDE.md](docs/deployment/AZURE-DEPLOYMENT-GUIDE.md)
 
 ### 🖥️ ECS服务器部署
 手动部署到阿里云ECS或其他VPS服务器：
 
-**自动部署（推荐）:**
-```bash
-# 上传脚本到服务器
-scp ecs-auto-deploy.sh root@your-server-ip:/root/
-
-# 连接服务器并运行
-ssh root@your-server-ip
-chmod +x ecs-auto-deploy.sh
-./ecs-auto-deploy.sh
-```
-
-**手动部署:**
-详见：`ECS-MANUAL-DEPLOYMENT.md`
+详见：[docs/deployment/ECS-MANUAL-DEPLOYMENT.md](docs/deployment/ECS-MANUAL-DEPLOYMENT.md)
 
 **故障排除:**
-详见：`ECS-TROUBLESHOOTING.md`
+详见：[docs/deployment/ECS-TROUBLESHOOTING.md](docs/deployment/ECS-TROUBLESHOOTING.md)
 
 ### 🐳 Docker容器部署
 使用Docker容器进行部署：
@@ -198,7 +186,7 @@ docker run -d -p 3000:3000 --name netfasttest netfasttest
 ### Node.js版本选择
 - **推荐**: Node.js 20 LTS（长期支持版本）
 - **支持**: Node.js 18.17+ 和 Node.js 22+
-- 详见：`NODEJS-VERSION-GUIDE.md`
+- 详见：[docs/deployment/NODEJS-VERSION-GUIDE.md](docs/deployment/NODEJS-VERSION-GUIDE.md)
 
 ### 网络访问问题
 如果部署后无法访问（特别是Vercel），可能的原因：
@@ -220,18 +208,19 @@ docker run -d -p 3000:3000 --name netfasttest netfasttest
 ## 技术支持
 
 ### 部署相关文档
-- `VERCEL-DEPLOYMENT-GUIDE.md` - Vercel部署指南
-- `VERCEL-TROUBLESHOOTING.md` - Vercel故障排查
-- `AZURE-DEPLOYMENT-GUIDE.md` - Azure部署指南
-- `ECS-MANUAL-DEPLOYMENT.md` - ECS手动部署指南
-- `NODEJS-VERSION-GUIDE.md` - Node.js版本选择指南
+- [docs/README.md](docs/README.md) - 部署文档和脚本总览
+- [docs/CONFIG-FILES-GUIDE.md](docs/CONFIG-FILES-GUIDE.md) - 配置文件详细说明
+- [docs/deployment/VERCEL-DEPLOYMENT-GUIDE.md](docs/deployment/VERCEL-DEPLOYMENT-GUIDE.md) - Vercel部署指南
+- [docs/deployment/VERCEL-TROUBLESHOOTING.md](docs/deployment/VERCEL-TROUBLESHOOTING.md) - Vercel故障排查
+- [docs/deployment/AZURE-DEPLOYMENT-GUIDE.md](docs/deployment/AZURE-DEPLOYMENT-GUIDE.md) - Azure部署指南
+- [docs/deployment/ECS-MANUAL-DEPLOYMENT.md](docs/deployment/ECS-MANUAL-DEPLOYMENT.md) - ECS手动部署指南
+- [docs/deployment/NODEJS-VERSION-GUIDE.md](docs/deployment/NODEJS-VERSION-GUIDE.md) - Node.js版本选择指南
 
 ### 脚本工具
-- `vercel-precheck.sh` - Vercel部署前检查脚本
-- `vercel-deploy.sh` - Vercel快速部署脚本
-- `test-vercel-performance.sh` - Vercel性能测试脚本
-- `azure-quick-deploy.sh` - Azure快速部署脚本
-- `ecs-auto-deploy.sh` - ECS自动部署脚本
+- `docs/scripts/vercel-precheck.sh` - Vercel部署前检查脚本
+- `docs/scripts/vercel-deploy.sh` - Vercel快速部署脚本
+- `docs/scripts/test-vercel-performance.sh` - Vercel性能测试脚本
+- `docs/scripts/azure-quick-deploy.sh` - Azure快速部署脚本
 
 ## 许可证
 

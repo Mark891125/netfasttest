@@ -3,6 +3,5 @@
     "app/api/speed-test/route.ts": {
       "maxDuration": 30
     }
-  },
-  "regions": ["hkg1", "sin1", "nrt1", "icn1"]
+  }
 }
