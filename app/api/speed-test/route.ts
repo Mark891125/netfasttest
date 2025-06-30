@@ -88,7 +88,18 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json(); // 读取请求体
     const clientSendTime = requestBody.timestamp || serverReceiveTime; // 客户端发送时间戳
     
-    const responseTime = serverReceiveTime - clientSendTime; // 真正的网络传输时间（客户端发送到服务器接收）
+    let responseTime = serverReceiveTime - clientSendTime; // 网络传输时间
+    
+    // 防止负数响应时间（可能由于时间同步问题或时钟偏差）
+    if (responseTime < 0) {
+      console.warn(`检测到负数响应时间: ${responseTime}ms, 客户端时间: ${new Date(clientSendTime).toISOString()}, 服务器时间: ${new Date(serverReceiveTime).toISOString()}`);
+      responseTime = Math.abs(responseTime); // 取绝对值，或者可以设为最小值如1ms
+    }
+    
+    // 对于异常大的延迟也进行警告（可能是时钟问题）
+    if (responseTime > 30000) { // 30秒
+      console.warn(`检测到异常大的响应时间: ${responseTime}ms, 可能存在时钟同步问题`);
+    }
     
     // 创建基础测试结果，先不包含地理位置信息
     const result: SpeedTestResult = {
@@ -156,7 +167,13 @@ export async function GET(request: NextRequest) {
     });
   }
   
-  const responseTime = serverReceiveTime - clientSendTime; // 网络传输延迟
+  let responseTime = serverReceiveTime - clientSendTime; // 网络传输延迟
+  
+  // 防止负数响应时间
+  if (responseTime < 0) {
+    console.warn(`GET请求检测到负数响应时间: ${responseTime}ms`);
+    responseTime = Math.abs(responseTime);
+  }
   
   // 默认地理位置信息
   let location = '本地网络';

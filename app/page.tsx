@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import styles from "./page.module.css";
-import NetworkStatus from './components/NetworkStatus';
+import NetworkStatus from "./components/NetworkStatus";
 
 interface TestResult {
   id: string;
@@ -27,11 +27,11 @@ export default function Home() {
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
-    const saved = sessionStorage.getItem('speedTestHistory');
+    const saved = sessionStorage.getItem("speedTestHistory");
     if (saved) {
       setTestHistory(JSON.parse(saved));
     }
-    
+
     // 页面加载时同步服务器时间
     syncServerTime();
   }, []);
@@ -40,27 +40,28 @@ export default function Home() {
   const syncServerTime = async () => {
     try {
       const clientRequestTime = Date.now();
-      const response = await fetch('/api/speed-test?action=get-server-time');
+      const response = await fetch("/api/speed-test?action=get-server-time");
       const clientReceiveTime = Date.now();
-      
+
       if (response.ok) {
         const result = await response.json();
         const serverTime = result.data.serverTime;
-        
-        // 计算网络延迟的一半作为估算的单程延迟
-        const networkDelay = (clientReceiveTime - clientRequestTime) / 2;
-        
-        // 估算服务器当前时间（考虑网络延迟）
-        const estimatedServerTime = serverTime + networkDelay;
-        
-        // 计算时间差（服务器时间 - 本地时间）
-        const diff = estimatedServerTime - clientReceiveTime;
-        setTimeDiff(diff);
-        
-        console.log(`时间同步完成: 服务器时间差值 ${diff.toFixed(2)}ms, 网络延迟: ${networkDelay.toFixed(2)}ms`);
+
+        // 简化时间同步：直接计算服务器时间和客户端时间的差值
+        // 使用请求中点时间作为参考
+        const clientMidTime = (clientRequestTime + clientReceiveTime) / 2;
+        const timeDifference = serverTime - clientMidTime;
+        setTimeDiff(timeDifference);
+
+        const networkDelay = clientReceiveTime - clientRequestTime;
+        console.log(
+          `时间同步完成: 服务器时间差值 ${timeDifference.toFixed(
+            2
+          )}ms, 往返延迟: ${networkDelay.toFixed(2)}ms`
+        );
       }
     } catch (error) {
-      console.error('服务器时间同步失败:', error);
+      console.error("服务器时间同步失败:", error);
       setTimeDiff(0); // 同步失败时使用本地时间
     }
   };
@@ -69,7 +70,7 @@ export default function Home() {
   const saveToHistory = (result: TestResult) => {
     const newHistory = [result, ...testHistory].slice(0, 20); // 最多保存20条记录
     setTestHistory(newHistory);
-    sessionStorage.setItem('speedTestHistory', JSON.stringify(newHistory));
+    sessionStorage.setItem("speedTestHistory", JSON.stringify(newHistory));
   };
 
   // 执行网络延迟测试
@@ -79,28 +80,33 @@ export default function Home() {
       const clientLocalTime = Date.now();
       // 使用同步后的时间差计算服务器时间
       const serverAdjustedTime = clientLocalTime + timeDiff;
-      
-      const response = await fetch('/api/speed-test', {
-        method: 'POST',
+
+      const response = await fetch("/api/speed-test", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          test: 'latency',
-          timestamp: serverAdjustedTime // 发送调整后的时间戳
-        })
+        body: JSON.stringify({
+          test: "latency",
+          timestamp: serverAdjustedTime, // 发送调整后的时间戳
+        }),
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         // 直接使用服务器返回的网络延迟时间
         setCurrentTest(result.data);
         saveToHistory(result.data);
-        
-        console.log(`网络延迟测试完成: ${result.data.responseTime}ms (基于服务器时间同步)`);
+
+        console.log(
+          `网络延迟测试完成: ${result.data.responseTime}ms (基于服务器时间同步)`
+        );
+
+        // 测试完成后重新同步时间，为下次测试做准备
+        await syncServerTime();
       }
     } catch (error) {
-      console.error('延迟测试失败:', error);
+      console.error("延迟测试失败:", error);
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +115,7 @@ export default function Home() {
   // 清除历史记录
   const clearHistory = () => {
     setTestHistory([]);
-    sessionStorage.removeItem('speedTestHistory');
+    sessionStorage.removeItem("speedTestHistory");
   };
 
   return (
@@ -118,22 +124,24 @@ export default function Home() {
         <div className={styles.container}>
           <div className={styles.header}>
             <h1 className={styles.title}>网络测试</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                时间同步: {timeDiff !== 0 ? `${timeDiff > 0 ? '+' : ''}${timeDiff.toFixed(1)}ms` : '本地时间'}
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <NetworkStatus className={styles.networkStatus} />
+              <div style={{ fontSize: "12px", color: "#666" }}>
+                {timeDiff !== 0
+                  ? `${timeDiff > 0 ? "+" : ""}${timeDiff.toFixed(1)}ms`
+                  : "本地时间"}
+              </div>
             </div>
           </div>
-          
+
           <div className={styles.testSection}>
             <div className={styles.buttonGroup}>
-              <button 
-                onClick={runLatencyTest} 
+              <button
+                onClick={runLatencyTest}
                 disabled={isLoading}
                 className={styles.testButton}
               >
-                {isLoading ? '测试中...' : '延迟测试'}
+                {isLoading ? "测试中..." : "延迟测试"}
               </button>
               {/* <button 
                 onClick={runDownloadTest} 
@@ -143,7 +151,7 @@ export default function Home() {
                 {isLoading ? '测试中...' : '下载测试'}
               </button> */}
             </div>
-            
+
             {currentTest && (
               <div className={styles.result}>
                 <h3>测试结果</h3>
@@ -174,25 +182,23 @@ export default function Home() {
               </div>
             )}
           </div>
-          
+
           <div className={styles.historySection}>
             <div className={styles.historyHeader}>
-              <button 
+              <button
                 onClick={() => setShowHistory(!showHistory)}
                 className={styles.historyToggle}
               >
-                {showHistory ? '隐藏历史记录' : '显示历史记录'} ({testHistory.length})
+                {showHistory ? "隐藏历史记录" : "显示历史记录"} (
+                {testHistory.length})
               </button>
               {testHistory.length > 0 && (
-                <button 
-                  onClick={clearHistory}
-                  className={styles.clearButton}
-                >
+                <button onClick={clearHistory} className={styles.clearButton}>
                   清除记录
                 </button>
               )}
             </div>
-            
+
             {showHistory && (
               <div className={styles.historyList}>
                 {testHistory.length === 0 ? (
