@@ -1,0 +1,28 @@
+# 开发工具和配置
+.git/
+.vscode/
+*.log
+.env*
+
+# 构建产物和缓存
+node_modules/
+.next/
+*.zip
+
+# 文档和脚本
+docs/
+README.md
+deploy-*.sh
+quick-deploy.sh
+
+# 其他平台配置
+Dockerfile
+vercel.json
+.vercelignore
+bun.lock
+
+# 测试和开发文件
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts

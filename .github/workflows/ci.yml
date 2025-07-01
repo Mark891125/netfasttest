@@ -1,0 +1,36 @@
+name: actions
+
+on: [push, pull_request] # 触发事件
+
+env:
+  # 阿里云容器镜像服务配置
+  ACR_REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  ACR_NAMESPACE: xmark
+  ACR_REPOSITORY: codeup
+  
+  # 阿里云认证信息 - 需要在 GitHub Secrets 中配置
+  ACR_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+  ACR_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  
+  # 镜像标签
+  IMAGE_TAG: ${{ github.sha }}
+jobs:
+  bt-product-release:
+    if: ${{ github.ref == 'refs/heads/main' }}  # 检测main分支是否有更新
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4 # pull代码到运行服务器上
+    - name: Login to Aliyun Container Registry (ACR)
+      uses: aliyun/acr-login@v1 # 使用阿里云镜像服务action
+      with:
+        login-server: ${{ env.ACR_REGISTRY }}
+        username: "${{ secrets.REGISTRY_USERNAME }}" # 引用GitHub repo设置的镜像容器服务用户名
+        password: "${{ secrets.REGISTRY_PASSWORD }}" # 引用GitHub repo设置的镜像容器服务密码
+    - name: Build and Push Docker Image
+      env:
+        IMAGE_TAG: ${{ github.sha }} # 用于标记容器版本号
+        FULL_IMAGE_NAME: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY }}/netfasttest
+      run: |
+        docker build -t $FULL_IMAGE_NAME:$IMAGE_TAG .        
+        docker push $FULL_IMAGE_NAME:$IMAGE_TAG
+        

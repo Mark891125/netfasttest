@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Docker 部署配置
-  output: 'standalone',
+  // Azure App Service 配置 - 不使用 standalone
+  // output: 'standalone', // 在 Azure 中暂时禁用
 
   // 外部包配置 (Next.js 15+)
   serverExternalPackages: ['geoip-lite'],
