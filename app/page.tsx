@@ -12,8 +12,6 @@ interface TestResult {
   country: string;
   city: string;
   responseTime: number;
-  downloadSpeed?: number;
-  uploadSpeed?: number;
   requestSize: number;
   userAgent: string;
 }
@@ -23,7 +21,8 @@ export default function Home() {
   const [currentTest, setCurrentTest] = useState<TestResult | null>(null);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [timeDiff, setTimeDiff] = useState<number>(0); // 服务器时间与本地时间的差值
+  const [timeDiff, setTimeDiff] = useState<number>(0);
+  const [rtt, setRTT] = useState<number>(0);
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
@@ -36,29 +35,53 @@ export default function Home() {
     syncServerTime();
   }, []);
 
+  /**
+   * 使用NTP算法原理计算客户端与服务端的时钟差
+   * 公式: 时钟差 = ((T2 - T1) + (T3 - T4)) / 2
+   * T1: 客户端发送时间
+   * T2: 服务端接收时间
+   * T3: 服务端发送时间
+   * T4: 客户端接收时间
+   */
+  function calculateClockOffset(
+    clientSendTime: number,
+    serverReceiveTime: number,
+    serverSendTime: number,
+    clientReceiveTime: number
+  ): number {
+    return (
+      (serverReceiveTime -
+        clientSendTime +
+        (serverSendTime - clientReceiveTime)) /
+      2
+    );
+  }
+
   // 同步服务器时间
   const syncServerTime = async () => {
     try {
-      const clientRequestTime = Date.now();
-      const response = await fetch("/api/speed-test?action=get-server-time");
+      const clientSendTime = Date.now();
+      const response = await fetch("/api/speed-test?_t=" + clientSendTime);
       const clientReceiveTime = Date.now();
 
       if (response.ok) {
         const result = await response.json();
-        const serverTime = result.data.serverTime;
+        const { timestamp } = result.data;
 
-        // 简化时间同步：直接计算服务器时间和客户端时间的差值
-        // 使用请求中点时间作为参考
-        const clientMidTime = (clientRequestTime + clientReceiveTime) / 2;
-        const timeDifference = serverTime - clientMidTime;
-        setTimeDiff(timeDifference);
-
-        const networkDelay = clientReceiveTime - clientRequestTime;
-        console.log(
-          `时间同步完成: 服务器时间差值 ${timeDifference.toFixed(
-            2
-          )}ms, 往返延迟: ${networkDelay.toFixed(2)}ms`
+        // 计算时钟差
+        const clockOffset = calculateClockOffset(
+          clientSendTime,
+          timestamp,
+          timestamp,
+          clientReceiveTime
         );
+
+        // 计算往返时间 (RTT)
+        const rtt = clientReceiveTime - clientSendTime;
+
+        setTimeDiff(clockOffset);
+        setRTT(rtt);
+        console.log(`时钟差: ${clockOffset}ms, RTT: ${rtt}ms`);
       }
     } catch (error) {
       console.error("服务器时间同步失败:", error);
@@ -77,10 +100,6 @@ export default function Home() {
   const runLatencyTest = async () => {
     setIsLoading(true);
     try {
-      const clientLocalTime = Date.now();
-      // 使用同步后的时间差计算服务器时间
-      const serverAdjustedTime = clientLocalTime + timeDiff;
-
       const response = await fetch("/api/speed-test", {
         method: "POST",
         headers: {
@@ -88,7 +107,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           test: "latency",
-          timestamp: serverAdjustedTime, // 发送调整后的时间戳
+          timestamp: Date.now(), // 发送调整后的时间戳
         }),
       });
 
@@ -98,13 +117,34 @@ export default function Home() {
         setCurrentTest(result.data);
         saveToHistory(result.data);
 
-        console.log(
-          `网络延迟测试完成: ${result.data.responseTime}ms (基于服务器时间同步)`
-        );
+        console.log(`网络延迟测试完成: ${result.data.responseTime}ms`);
 
-        // 测试完成后重新同步时间，为下次测试做准备
-        await syncServerTime();
+        // result.data.ip = "202.57.204.3";
+        const clientIP = result.data.ip;
+        // 只对非本地IP进行地理位置查询
+        if (
+          clientIP == "127.0.0.1" ||
+          clientIP.startsWith("::1") ||
+          clientIP.startsWith("192.168.") ||
+          clientIP.startsWith("10.") ||
+          clientIP.startsWith("172.")
+        ) {
+          result.data.location = `本地网络`;
+          result.data.country = "本地";
+          result.data.city = "本地";
+        } else {
+          console.log(`查询IP地址: ${clientIP}`);
+          const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`);
+          if (ipResponse.ok) {
+            const ipData = await ipResponse.json();
+            result.data.location = `${ipData.city}, ${ipData.region}, ${ipData.country_name}`;
+            result.data.country = ipData.country_name;
+            result.data.city = ipData.city;
+          }
+        }
       }
+      // 测试完成后重新同步时间，为下次测试做准备
+      await syncServerTime();
     } catch (error) {
       console.error("延迟测试失败:", error);
     } finally {
@@ -125,12 +165,11 @@ export default function Home() {
           <div className={styles.header}>
             <h1 className={styles.title}>网络测试</h1>
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <NetworkStatus className={styles.networkStatus} />
-              <div style={{ fontSize: "12px", color: "#666" }}>
-                {timeDiff !== 0
-                  ? `${timeDiff > 0 ? "+" : ""}${timeDiff.toFixed(1)}ms`
-                  : "本地时间"}
-              </div>
+              <NetworkStatus
+                className="nt-status"
+                rtt={rtt}
+                timeDiff={timeDiff}
+              />
             </div>
           </div>
 
@@ -143,13 +182,6 @@ export default function Home() {
               >
                 {isLoading ? "测试中..." : "延迟测试"}
               </button>
-              {/* <button 
-                onClick={runDownloadTest} 
-                disabled={isLoading}
-                className={styles.testButton}
-              >
-                {isLoading ? '测试中...' : '下载测试'}
-              </button> */}
             </div>
 
             {currentTest && (
@@ -172,12 +204,6 @@ export default function Home() {
                     <label>网络延迟:</label>
                     <span>{currentTest.responseTime}ms</span>
                   </div>
-                  {currentTest.downloadSpeed && (
-                    <div className={styles.resultItem}>
-                      <label>下载速度:</label>
-                      <span>{currentTest.downloadSpeed} Mbps</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -211,9 +237,6 @@ export default function Home() {
                         <span>IP: {test.ip}</span>
                         <span>位置: {test.location}</span>
                         <span>延迟: {test.responseTime}ms</span>
-                        {test.downloadSpeed && (
-                          <span>下载: {test.downloadSpeed} Mbps</span>
-                        )}
                       </div>
                     </div>
                   ))

@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface NetworkStatusProps {
   className?: string;
+  rtt?: number;
+  timeDiff?: number;
 }
 
 interface NetworkStatus {
@@ -32,21 +34,28 @@ interface ExtendedNavigator extends Navigator {
   };
 }
 
-export default function NetworkStatus({ className }: NetworkStatusProps) {
+export default function NetworkStatus({
+  className,
+  rtt,
+  timeDiff,
+}: NetworkStatusProps) {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>({
-    online: true
+    online: true,
   });
 
   useEffect(() => {
     const updateNetworkStatus = () => {
       const extNavigator = navigator as ExtendedNavigator;
-      const connection = extNavigator.connection || extNavigator.mozConnection || extNavigator.webkitConnection;
-      
+      const connection =
+        extNavigator.connection ||
+        extNavigator.mozConnection ||
+        extNavigator.webkitConnection;
+
       setNetworkStatus({
         online: navigator.onLine,
         effectiveType: connection?.effectiveType,
         downlink: connection?.downlink,
-        rtt: connection?.rtt
+        rtt: rtt || connection?.rtt,
       });
     };
 
@@ -54,67 +63,76 @@ export default function NetworkStatus({ className }: NetworkStatusProps) {
     updateNetworkStatus();
 
     // 监听网络状态变化
-    window.addEventListener('online', updateNetworkStatus);
-    window.addEventListener('offline', updateNetworkStatus);
-    
+    window.addEventListener("online", updateNetworkStatus);
+    window.addEventListener("offline", updateNetworkStatus);
+
     // 监听网络信息变化（如果支持）
     const extNavigator = navigator as ExtendedNavigator;
     const connection = extNavigator.connection;
     if (connection && connection.addEventListener) {
-      connection.addEventListener('change', updateNetworkStatus);
+      connection.addEventListener("change", updateNetworkStatus);
     }
 
     return () => {
-      window.removeEventListener('online', updateNetworkStatus);
-      window.removeEventListener('offline', updateNetworkStatus);
+      window.removeEventListener("online", updateNetworkStatus);
+      window.removeEventListener("offline", updateNetworkStatus);
       if (connection && connection.removeEventListener) {
-        connection.removeEventListener('change', updateNetworkStatus);
+        connection.removeEventListener("change", updateNetworkStatus);
       }
     };
-  }, []);
+  }, [rtt]); // 添加 rtt 作为依赖项，当 rtt 变化时重新执行
 
   const getStatusColor = () => {
-    if (!networkStatus.online) return '#dc3545';
-    if (networkStatus.effectiveType === '4g') return '#28a745';
-    if (networkStatus.effectiveType === '3g') return '#ffc107';
-    return '#6c757d';
+    if (!networkStatus.online) return "#dc3545";
+    if (networkStatus.effectiveType === "4g") return "#28a745";
+    if (networkStatus.effectiveType === "3g") return "#ffc107";
+    return "#6c757d";
   };
 
   const getStatusText = () => {
-    if (!networkStatus.online) return '离线';
+    if (!networkStatus.online) return "离线";
     if (networkStatus.effectiveType) {
       return `${networkStatus.effectiveType.toUpperCase()}`;
     }
-    return '在线';
+    return "在线";
   };
 
   return (
-    <div className={className} style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: '8px',
-      fontSize: '14px',
-      color: '#666'
-    }}>
-      <div 
+    <div
+      className={className}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        fontSize: "14px",
+        color: "#666",
+      }}
+    >
+      <div
         style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: getStatusColor()
+          width: "8px",
+          height: "8px",
+          borderRadius: "50%",
+          backgroundColor: getStatusColor(),
         }}
       />
       <span>{getStatusText()}</span>
       {networkStatus.downlink && (
-        <span style={{ fontFamily: 'var(--font-geist-mono)' }}>
+        <span style={{ fontFamily: "var(--font-geist-mono)" }}>
           ({networkStatus.downlink} Mbps)
         </span>
       )}
-      {networkStatus.rtt && (
-        <span style={{ fontFamily: 'var(--font-geist-mono)' }}>
-          RTT: {networkStatus.rtt}ms
+      {(networkStatus.rtt || rtt) && (
+        <span style={{ fontFamily: "var(--font-geist-mono)" }}>
+          RTT: {rtt || networkStatus.rtt}ms
         </span>
       )}
+
+      <div style={{ fontSize: "12px", color: "#666" }}>
+        {timeDiff !== undefined && timeDiff !== 0
+          ? `${timeDiff > 0 ? "+" : ""}${timeDiff.toFixed(1)}ms`
+          : ""}
+      </div>
     </div>
   );
 }
