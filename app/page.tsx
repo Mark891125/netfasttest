@@ -118,7 +118,6 @@ export default function Home() {
         saveToHistory(result.data);
 
         console.log(`网络延迟测试完成: ${result.data.responseTime}ms`);
-
         // result.data.ip = "202.57.204.3";
         const clientIP = result.data.ip;
         // 只对非本地IP进行地理位置查询
@@ -134,13 +133,26 @@ export default function Home() {
           result.data.city = "本地";
         } else {
           console.log(`查询IP地址: ${clientIP}`);
-          
-          const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`);
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+
+          const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`, {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId); // 清除超时计时器
+
           if (ipResponse.ok) {
             const ipData = await ipResponse.json();
             result.data.location = `${ipData.city}, ${ipData.region}, ${ipData.country_name}`;
             result.data.country = ipData.country_name;
             result.data.city = ipData.city;
+          } else {
+            // 请求失败但未超时的情况
+            console.warn("IP地理位置查询失败");
+            result.data.location = "";
+            result.data.country = "";
+            result.data.city = "";
           }
         }
       }

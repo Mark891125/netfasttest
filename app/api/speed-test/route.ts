@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   let clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
+  clientIp = "101.82.153.167:2443";
   if (clientIp.startsWith("::ffff:")) {
     // 去掉IPv6格式的前缀
     clientIp = clientIp.substring(7);
