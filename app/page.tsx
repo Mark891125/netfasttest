@@ -134,6 +134,7 @@ export default function Home() {
           result.data.city = "本地";
         } else {
           console.log(`查询IP地址: ${clientIP}`);
+          
           const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`);
           if (ipResponse.ok) {
             const ipData = await ipResponse.json();

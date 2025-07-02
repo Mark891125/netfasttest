@@ -26,7 +26,15 @@ export async function POST(request: NextRequest) {
   // 获取客户端IP
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
-  const clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
+  let clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
+  if (clientIp.startsWith("::ffff:")) {
+    // 去掉IPv6格式的前缀
+    clientIp = clientIp.substring(7);
+  }
+  if (clientIp.indexOf(":")) {
+    // 去掉IPv6格式的前缀
+    clientIp = clientIp.split(":")[0];
+  }
 
   // 获取请求信息
   const userAgent = request.headers.get("user-agent") || "";
