@@ -1,8 +1,8 @@
 name: actions
 
 on: 
-  push: # 推送时触发
-  pull_request: # PR时触发
+  # push: # 推送时触发
+  # pull_request: # PR时触发
   workflow_dispatch: # 手动触发
     inputs:
       environment:

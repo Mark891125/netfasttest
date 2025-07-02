@@ -27,7 +27,7 @@ RUN npm run build
 FROM base AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # 运行阶段
 FROM base AS runner
@@ -39,22 +39,19 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# 复制生产依赖
-COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
-
-# 复制构建产物
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# 自动利用输出跟踪来减少镜像大小
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# 复制 standalone 应用（包含自己的 node_modules 和 server.js）
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+
+# 复制静态文件
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
 
-EXPOSE 8080
+EXPOSE 80
 
-ENV PORT 8080
+ENV PORT 80
 ENV HOSTNAME "0.0.0.0"
 
+# 使用 standalone 模式启动
 CMD ["node", "server.js"]
