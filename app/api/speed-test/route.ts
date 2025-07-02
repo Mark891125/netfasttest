@@ -14,7 +14,124 @@ interface SpeedTestResult {
   userAgent: string;
 }
 
-// 简单的IP地理位置查询函数
+// 测试外部网络连通性（通过Chanel和Google网站）
+async function testExternalConnectivity(): Promise<boolean> {
+  const testEndpoints = [
+    "https://www.chanel.com/",
+    "https://www.google.com/"
+  ];
+
+  console.log("开始测试外部网络连通性...");
+
+  // 并发测试多个端点，任何一个成功即认为连通性正常
+  const testPromises = testEndpoints.map(async (url) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+
+      const response = await fetch(url, {
+        method: "HEAD",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; NetFastTest/1.0)"
+        }
+      });
+
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        console.log(`外部网络连通性测试成功 - ${url}`);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.warn(`外部网络连通性测试超时 - ${url}`);
+        } else {
+          console.warn(`外部网络连通性测试异常 - ${url}: ${error.message}`);
+        }
+      }
+      return false;
+    }
+  });
+
+  try {
+    // 使用 Promise.any 只要有一个成功就返回 true
+    await Promise.any(testPromises);
+    return true;
+  } catch (error) {
+    console.error("所有外部网络连通性测试都失败");
+    return false;
+  }
+}
+
+// 两个主要的IP地理位置API配置
+const IP_APIS = [
+  {
+    name: "ipapi.co",
+    url: (ip: string) => `https://ipapi.co/${ip}/json/`,
+    parseResponse: (data: any) => ({
+      success: !data.error,
+      country: data.country_name,
+      region: data.region,
+      city: data.city,
+      message: data.reason
+    })
+  },
+  {
+    name: "ip-api.com",
+    url: (ip: string) => `http://ip-api.com/json/${ip}?fields=status,country,regionName,city,lat,lon`,
+    parseResponse: (data: any) => ({
+      success: data.status === "success",
+      country: data.country,
+      region: data.regionName,
+      city: data.city,
+      message: data.message
+    })
+  }
+];
+
+// 基于IP段的简单地理位置推测（备用方案）
+function getLocationFromIPPattern(ip: string) {
+  const firstOctet = parseInt(ip.split('.')[0]);
+  
+  // 基于IP地址段的简单推测
+  if (firstOctet >= 1 && firstOctet <= 126) {
+    // A类地址段，多为亚太地区
+    return {
+      country: "亚太地区",
+      region: "未知省份",
+      city: "未知城市",
+      location: "亚太地区（网络受限）",
+    };
+  } else if (firstOctet >= 128 && firstOctet <= 191) {
+    // B类地址段，多为欧美地区
+    return {
+      country: "欧美地区",
+      region: "未知州省",
+      city: "未知城市",
+      location: "欧美地区（网络受限）",
+    };
+  } else if (firstOctet >= 192 && firstOctet <= 223) {
+    // C类地址段
+    return {
+      country: "其他地区",
+      region: "未知区域",
+      city: "未知城市",
+      location: "其他地区（网络受限）",
+    };
+  } else {
+    return {
+      country: "未知",
+      region: "网络受限",
+      city: "无法查询",
+      location: "网络连接受限，无法确定位置",
+    };
+  }
+}
+
+// 改进的IP地理位置查询函数，支持多个API和连通性测试
 async function getLocationFromIP(ip: string) {
   // 标准化IP地址
   let cleanIp = ip;
@@ -22,120 +139,90 @@ async function getLocationFromIP(ip: string) {
     cleanIp = ip.substring(7); // 移除IPv6前缀
   }
 
-  try {
-    // 跳过私有IP和localhost
-    if (
-      cleanIp === "127.0.0.1" ||
-      cleanIp === "::1" ||
-      cleanIp.startsWith("192.168.") ||
-      cleanIp.startsWith("10.") ||
-      cleanIp.startsWith("172.")
-    ) {
-      return {
-        country: "本地",
-        region: "本地网络",
-        city: "本地",
-        location: "本地网络",
-      };
-    }
+  // 跳过私有IP和localhost
+  if (
+    cleanIp === "127.0.0.1" ||
+    cleanIp === "::1" ||
+    cleanIp.startsWith("192.168.") ||
+    cleanIp.startsWith("10.") ||
+    cleanIp.startsWith("172.")
+  ) {
+    return {
+      country: "本地",
+      region: "本地网络",
+      city: "本地",
+      location: "本地网络",
+    };
+  }
 
-    // 使用免费的IP地理位置API
-    const response = await fetch(
-      `http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,lat,lon`
-    );
+  // 首先测试外部网络连通性
+  const hasConnectivity = await testExternalConnectivity();
+  if (!hasConnectivity) {
+    console.warn("外部网络连通性测试失败，使用基于IP段的简单推测");
+    return getLocationFromIPPattern(cleanIp);
+  }
 
-    // 处理 429 速率限制错误
-    if (response.status === 429) {
-      const remainingRequests = response.headers.get("X-Rl") || "0";
-      const resetTime = response.headers.get("X-Ttl") || "60";
+  // 尝试多个API服务
+  for (const api of IP_APIS) {
+    try {
+      console.log(`尝试使用 ${api.name} 查询IP地理位置...`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒超时
+      
+      const response = await fetch(api.url(cleanIp), {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; NetFastTest/1.0)"
+        }
+      });
 
-      console.warn(`IP地理位置API速率限制已达到 (HTTP 429) - IP: ${cleanIp}`);
-      console.warn(
-        `剩余请求数: ${remainingRequests}, 重置时间: ${resetTime}秒`
-      );
+      clearTimeout(timeoutId);
 
-      return {
-        country: "限制中",
-        region: "速率限制",
-        city: "限制中",
-        location: `速率限制 (${resetTime}秒后重置)`,
-      };
-    }
-
-    // 解析响应数据 - ip-api.com 即使查询失败也返回200状态码
-    const data = await response.json();
-
-    // 检查API响应状态 - 这是真正的判断逻辑
-    if (data.status !== "success") {
-      const message = data.message || "未知错误";
-      console.error(
-        `IP地理位置API返回错误 - IP: ${cleanIp}, 状态: ${data.status}, 消息: ${message}`
-      );
-
-      // 根据错误消息返回相应的信息
-      if (message.includes("private range")) {
-        return {
-          country: "私有网络",
-          region: "内网地址",
-          city: "私有网络",
-          location: "私有网络地址",
-        };
-      } else if (message.includes("reserved range")) {
-        return {
-          country: "保留地址",
-          region: "保留网段",
-          city: "保留地址",
-          location: "保留网络地址",
-        };
-      } else if (message.includes("invalid query")) {
-        return {
-          country: "无效地址",
-          region: "格式错误",
-          city: "无效地址",
-          location: "IP地址格式无效",
-        };
+      // 处理速率限制
+      if (response.status === 429) {
+        const remainingRequests = response.headers.get("X-Rl") || "0";
+        const resetTime = response.headers.get("X-Ttl") || "60";
+        console.warn(`${api.name} 速率限制已达到 (HTTP 429) - IP: ${cleanIp}`);
+        console.warn(`剩余请求数: ${remainingRequests}, 重置时间: ${resetTime}秒`);
+        continue; // 尝试下一个API
       }
 
-      // 其他API错误
-      return {
-        country: "查询异常",
-        region: "API错误",
-        city: "查询异常",
-        location: `查询异常: ${message}`,
-      };
-    }
+      if (!response.ok) {
+        console.warn(`${api.name} HTTP错误: ${response.status}`);
+        continue; // 尝试下一个API
+      }
 
-    // 成功获取数据
-    console.log(
-      `成功获取IP地理位置 - IP: ${cleanIp} -> ${data.country}, ${data.regionName}, ${data.city}`
-    );
-    return {
-      country: data.country || "未知",
-      region: data.regionName || "未知",
-      city: data.city || "未知",
-      location: `${data.country}, ${data.regionName}, ${data.city}`,
-    };
-  } catch (error) {
-    // 统一错误日志记录
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      console.error(
-        `IP地理位置查询网络错误 - IP: ${cleanIp}, 错误: 网络连接失败`
-      );
-    } else if (error instanceof SyntaxError) {
-      console.error(
-        `IP地理位置查询JSON解析错误 - IP: ${cleanIp}, 错误: 响应数据格式异常`
-      );
-    } else if (error instanceof Error) {
-      console.error(
-        `IP地理位置查询异常 - IP: ${cleanIp}, 错误: ${error.message}`
-      );
-    } else {
-      console.error(`IP地理位置查询未知错误 - IP: ${cleanIp}`, error);
+      const data = await response.json();
+      const parsed = api.parseResponse(data);
+
+      if (parsed.success && parsed.country) {
+        console.log(`${api.name} 查询成功 - IP: ${cleanIp} -> ${parsed.country}, ${parsed.region}, ${parsed.city}`);
+        return {
+          country: parsed.country || "未知",
+          region: parsed.region || "未知",
+          city: parsed.city || "未知",
+          location: `${parsed.country}, ${parsed.region}, ${parsed.city}`,
+        };
+      } else {
+        console.warn(`${api.name} 查询失败: ${parsed.message || "未知错误"}`);
+        continue; // 尝试下一个API
+      }
+
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error(`${api.name} 查询超时 - IP: ${cleanIp}`);
+        } else {
+          console.error(`${api.name} 查询异常 - IP: ${cleanIp}, 错误: ${error.message}`);
+        }
+      }
+      continue; // 尝试下一个API
     }
   }
 
-  // 统一的默认返回值
-  console.warn(`IP地理位置查询失败，使用默认值 - IP: ${cleanIp}`);
+  // 所有API都失败后的处理
+  console.warn(`所有IP地理位置API都失败，使用默认值 - IP: ${cleanIp}`);
   return {
     country: "查询失败",
     region: "网络异常",
@@ -269,6 +356,101 @@ export async function GET(request: NextRequest) {
         serverTime: serverReceiveTime,
         timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
       },
+    });
+  }
+
+  // 检查是否是健康检查请求
+  if (url.searchParams.get("action") === "health-check") {
+    console.log("开始执行健康检查...");
+    
+    interface ServiceStatus {
+      name: string;
+      status: string;
+      response_time: number;
+      error: string | null;
+    }
+    
+    const healthCheck = {
+      server: {
+        status: "ok",
+        timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+        serverTime: serverReceiveTime
+      },
+      connectivity: {
+        external: false,
+        tested_at: format(new Date(), "yyyy-MM-dd HH:mm:ss")
+      },
+      ip_services: {
+        available: 0,
+        total: IP_APIS.length,
+        details: [] as ServiceStatus[]
+      }
+    };
+
+    // 测试外部连通性
+    try {
+      healthCheck.connectivity.external = await testExternalConnectivity();
+    } catch (error) {
+      console.error("健康检查 - 外部连通性测试失败:", error);
+    }
+
+    // 测试IP地理位置服务
+    if (healthCheck.connectivity.external) {
+      console.log("测试IP地理位置服务可用性...");
+      const testIP = "8.8.8.8"; // 使用Google DNS作为测试IP
+      
+      for (const api of IP_APIS) {
+        const serviceStatus: ServiceStatus = {
+          name: api.name,
+          status: "unknown",
+          response_time: 0,
+          error: null
+        };
+
+        try {
+          const startTime = Date.now();
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+          const response = await fetch(api.url(testIP), {
+            signal: controller.signal,
+            headers: {
+              "User-Agent": "Mozilla/5.0 (compatible; NetFastTest-HealthCheck/1.0)"
+            }
+          });
+
+          clearTimeout(timeoutId);
+          serviceStatus.response_time = Date.now() - startTime;
+
+          if (response.ok) {
+            const data = await response.json();
+            const parsed = api.parseResponse(data);
+            
+            if (parsed.success) {
+              serviceStatus.status = "available";
+              healthCheck.ip_services.available++;
+            } else {
+              serviceStatus.status = "error";
+              serviceStatus.error = parsed.message || "API返回错误";
+            }
+          } else {
+            serviceStatus.status = "http_error";
+            serviceStatus.error = `HTTP ${response.status}`;
+          }
+        } catch (error) {
+          serviceStatus.status = "failed";
+          if (error instanceof Error) {
+            serviceStatus.error = error.name === 'AbortError' ? "timeout" : error.message;
+          }
+        }
+
+        healthCheck.ip_services.details.push(serviceStatus);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: healthCheck
     });
   }
 
