@@ -96,7 +96,7 @@ export default function Home() {
     sessionStorage.setItem("speedTestHistory", JSON.stringify(newHistory));
   };
 
-  // 执行网络延迟测试
+  // 执行网络网速测试
   const runLatencyTest = async () => {
     setIsLoading(true);
     try {
@@ -117,7 +117,7 @@ export default function Home() {
         setCurrentTest(result.data);
         saveToHistory(result.data);
 
-        console.log(`网络延迟测试完成: ${result.data.responseTime}ms`);
+        console.log(`网速测试完成: ${result.data.responseTime}ms`);
         // result.data.ip = "202.57.204.3";
         const clientIP = result.data.ip;
         // 只对非本地IP进行地理位置查询
@@ -128,15 +128,22 @@ export default function Home() {
           clientIP.startsWith("10.") ||
           clientIP.startsWith("172.")
         ) {
-          result.data.location = `本地网络`;
-          result.data.country = "本地";
-          result.data.city = "本地";
+          setCurrentTest({
+            ...result.data,
+            location: `本地网络`,
+            country: `本地`,
+            city: `本地`,
+          });
         } else {
           console.log(`查询IP地址: ${clientIP}`);
 
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
 
+          setCurrentTest({
+            ...result.data,
+            location: `查询中...`,
+          });
           const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`, {
             signal: controller.signal,
           });
@@ -144,22 +151,28 @@ export default function Home() {
 
           if (ipResponse.ok) {
             const ipData = await ipResponse.json();
-            result.data.location = `${ipData.city}, ${ipData.region}, ${ipData.country_name}`;
-            result.data.country = ipData.country_name;
-            result.data.city = ipData.city;
+            setCurrentTest({
+              ...result.data,
+              location: `${ipData.city}, ${ipData.region}, ${ipData.country_name}`,
+              country: ipData.country_name,
+              city: ipData.city,
+            });
           } else {
             // 请求失败但未超时的情况
             console.warn("IP地理位置查询失败");
-            result.data.location = "";
-            result.data.country = "";
-            result.data.city = "";
+            setCurrentTest({
+              ...result.data,
+              location: `未知位置`,
+              country: `未知国家`,
+              city: `未知城市`,
+            });
           }
         }
       }
       // 测试完成后重新同步时间，为下次测试做准备
       await syncServerTime();
     } catch (error) {
-      console.error("延迟测试失败:", error);
+      console.error("网速测试失败:", error);
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +206,7 @@ export default function Home() {
                 disabled={isLoading}
                 className={styles.testButton}
               >
-                {isLoading ? "测试中..." : "延迟测试"}
+                {isLoading ? "测试中..." : "网速测试"}
               </button>
             </div>
 
@@ -210,12 +223,12 @@ export default function Home() {
                     <span>{currentTest.ip}</span>
                   </div>
                   <div className={styles.resultItem}>
-                    <label>位置:</label>
-                    <span>{currentTest.location}</span>
-                  </div>
-                  <div className={styles.resultItem}>
                     <label>网络延迟:</label>
                     <span>{currentTest.responseTime}ms</span>
+                  </div>
+                  <div className={styles.resultItem}>
+                    <label>位置:</label>
+                    <span>{currentTest.location}</span>
                   </div>
                 </div>
               </div>
