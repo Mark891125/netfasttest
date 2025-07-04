@@ -223,7 +223,13 @@ export default function Home() {
                     <span>{currentTest.ip}</span>
                   </div>
                   <div className={styles.resultItem}>
-                    <label>网络延迟:</label>
+                    <div>
+                      <label>网络延迟:</label>
+                      <div style={{ fontSize: "12px", color: "#7e7e7e" }}>
+                        延迟小于3000ms 为正常
+                      </div>
+                    </div>
+
                     <span>{currentTest.responseTime}ms</span>
                   </div>
                   <div className={styles.resultItem}>

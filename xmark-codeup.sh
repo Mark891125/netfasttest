@@ -6,7 +6,7 @@
 REGISTRY_URL="registry.cn-hangzhou.aliyuncs.com"  # 阿里云镜像中心地址
 NAMESPACE="xmark"  # 阿里云命名空间
 IMAGE_NAME="codeup"  # 镜像名称
-VERSION="1.0.0"  # 版本标签，如果未提供则使用 "latest"
+VERSION="latest"  # 版本标签，如果未提供则使用 "latest"
 
 # 完整的镜像标签
 IMAGE_TAG="${REGISTRY_URL}/${NAMESPACE}/${IMAGE_NAME}:${VERSION}"
