@@ -36,8 +36,19 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# 安装 SSH 服务器（Azure App Service 要求）
+RUN apk add --no-cache openssh
+# 创建 SSH 配置目录
+RUN mkdir -p /etc/ssh
+# 复制 SSH 配置文件
+COPY sshd_config /etc/ssh/
+# 设置 SSH 主机密钥
+RUN ssh-keygen -A
+# 设置 root 密码为 Docker!（Azure App Service 要求）
+RUN echo "root:Docker!" | chpasswd
+
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 --shell /bin/sh nextjs
 
 # 复制 standalone 应用（包含自己的 node_modules 和 server.js）
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -46,12 +57,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-USER nextjs
-
-EXPOSE 80
+EXPOSE 80 2222
 
 ENV PORT 80
 ENV HOSTNAME "0.0.0.0"
 
-# 使用 standalone 模式启动
-CMD ["node", "server.js"]
+# 保持 root 用户，启动 SSH 服务后以 nextjs 用户运行应用
+CMD ["/bin/sh", "-c", "/usr/sbin/sshd -D & exec su nextjs -c 'node server.js'"]

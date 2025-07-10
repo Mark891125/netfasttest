@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import packageJson from "../package.json";
 
 export const metadata: Metadata = {
   title: "Network Speed Test",
@@ -11,8 +12,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  console.log(`NetFastTest 版本号: ${packageJson.version}`);
+
   return (
-    <html lang="en">
+    <html lang="en" data-v={packageJson.version} data-time={Date.now()}>
       <body className={`app`}>{children}</body>
     </html>
   );

@@ -81,7 +81,6 @@ export default function Home() {
 
         setTimeDiff(clockOffset);
         setRTT(rtt);
-        console.log(`时钟差: ${clockOffset}ms, RTT: ${rtt}ms`);
       }
     } catch (error) {
       console.error("服务器时间同步失败:", error);
@@ -113,9 +112,21 @@ export default function Home() {
 
       if (response.ok) {
         const result = await response.json();
+
+        const timezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
+        const timestamp = new Date().toLocaleDateString("zh-CN", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        result.data.timestamp = timestamp;
         // 直接使用服务器返回的网络延迟时间
         setCurrentTest(result.data);
-        saveToHistory(result.data);
 
         console.log(`网速测试完成: ${result.data.responseTime}ms`);
         // result.data.ip = "202.57.204.3";
@@ -128,12 +139,14 @@ export default function Home() {
           clientIP.startsWith("10.") ||
           clientIP.startsWith("172.")
         ) {
-          setCurrentTest({
+          const testRes = {
             ...result.data,
             location: `本地网络`,
             country: `本地`,
             city: `本地`,
-          });
+          };
+          setCurrentTest(testRes);
+          saveToHistory(testRes);
         } else {
           console.log(`查询IP地址: ${clientIP}`);
 
@@ -151,24 +164,30 @@ export default function Home() {
 
           if (ipResponse.ok) {
             const ipData = await ipResponse.json();
-            setCurrentTest({
+            const testRes = {
               ...result.data,
               location: `${ipData.city}, ${ipData.region}, ${ipData.country_name}`,
               country: ipData.country_name,
               city: ipData.city,
-            });
+            };
+            setCurrentTest(testRes);
+
+            saveToHistory(testRes);
           } else {
             // 请求失败但未超时的情况
             console.warn("IP地理位置查询失败");
-            setCurrentTest({
+            const testRes = {
               ...result.data,
               location: `未知位置`,
               country: `未知国家`,
               city: `未知城市`,
-            });
+            };
+            setCurrentTest(testRes);
+            saveToHistory(testRes);
           }
         }
       }
+
       // 测试完成后重新同步时间，为下次测试做准备
       await syncServerTime();
     } catch (error) {
