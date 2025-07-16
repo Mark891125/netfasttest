@@ -17,19 +17,95 @@ function getRequestClientIP(request: NextRequest): string {
   const realIp = request.headers.get("x-real-ip");
   let clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
 
+  // 去掉端口号（如 222.71.52.132:60783 -> 222.71.52.132）
+  if (clientIp.includes(":") && !clientIp.includes("::")) {
+    clientIp = clientIp.split(":")[0];
+  }
   if (clientIp.startsWith("::ffff:")) {
     clientIp = clientIp.substring(7); // 去掉IPv6格式的前缀
   }
 
-  if (clientIp.indexOf(":")) {
-    // 去掉IPv6格式的前缀
-    clientIp = clientIp.split(":")[0];
-  }
-  // return "220.12.41.11";
   return clientIp;
+}
+function matchIPByRule(ip: string, rule: string): boolean {
+  try {
+    return new RegExp(rule).test(ip);
+  } catch {
+    return false;
+  }
 }
 async function getIPLocation(ip: string): Promise<string> {
   let location = "";
+  const segmentDict = [
+    {
+      location: "未知网络",
+      rule: "^[0-9a-fA-F:]{2,}$", // 匹配所有IPv6地址（只要包含冒号且长度大于2）
+    },
+    {
+      location: "本地网络",
+      rule: "^127\\.0\\.0\\.1$",
+    },
+    {
+      location: "本地网络",
+      rule: "^::1$",
+    },
+    {
+      location: "本地网络",
+      rule: "^192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}$",
+    },
+    {
+      location: "本地网络",
+      rule: "^10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$",
+    },
+    {
+      location: "本地网络",
+      rule: "^172\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Premium Node (Beijing 4)",
+      rule: "^120\\.136\\.21\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Premium Node (Beijing 4)",
+      rule: "^202\\.57\\.204\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Premium Node (Beijing 4)",
+      rule: "^202\\.57\\.205\\.[0-9]{1,3}$",
+    },
+
+    {
+      location: "Shanghai II",
+      rule: "^140\\.210\\.(152|153)\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Beijing III",
+      rule: "^220\\.243\\.(154|155)\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Hong Kong III",
+      rule: "^202\\.57\\.(205|206)\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Hong Kong III",
+      rule: "^165\\.225\\.(234|235)\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Hong Kong III",
+      rule: "^136\\.226\\.(228|229)\\.[0-9]{1,3}$",
+    },
+    {
+      location: "Hong Kong III",
+      rule: "^167\\.103\\.(0|1)\\.[0-9]{1,3}$",
+    },
+  ];
+  // 优先匹配字典表
+  for (const seg of segmentDict) {
+    if (matchIPByRule(ip, seg.rule)) {
+      return seg.location;
+    }
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
@@ -68,18 +144,8 @@ export async function POST(request: NextRequest) {
     const clientSendTime = requestBody.timestamp; // 客户端发送时间戳
 
     // 检测IP归属地
-    let location = "";
-    if (
-      clientIp == "127.0.0.1" ||
-      clientIp.startsWith("::1") ||
-      clientIp.startsWith("192.168.") ||
-      clientIp.startsWith("10.") ||
-      clientIp.startsWith("172.")
-    ) {
-      location = "本地网络";
-    } else {
-      location = await getIPLocation(clientIp);
-    }
+    const location = await getIPLocation(clientIp);
+
     // 创建基础测试结果，先不包含地理位置信息
     const result: SpeedTestResult = {
       id: uuidv4(),

@@ -95,7 +95,10 @@ async function testExternalConnectivity(): Promise<{
 }
 
 export async function GET(request: NextRequest) {
-  // console.log("执行健康检查...");
+  // 检查是否有 _l 参数
+  const url = new URL(request.url);
+  const logEnabled = url.searchParams.has("_l");
+
   const healthCheck = {
     server: {
       status: "ok",
@@ -115,6 +118,9 @@ export async function GET(request: NextRequest) {
     healthCheck.connectivity.result = connectivityTest.results;
   } catch (error) {
     console.error("健康检查 - 外部连通性测试失败:", error);
+  }
+  if (logEnabled) {
+    console.log("健康检查", healthCheck);
   }
 
   return NextResponse.json({

@@ -235,10 +235,10 @@ export default function Home() {
 
                     <span>{currentTest.delay}ms</span>
                   </div>
-                  {/* <div className={styles.resultItem}>
+                  <div className={styles.resultItem}>
                     <label>位置:</label>
                     <span>{currentTest.location}</span>
-                  </div> */}
+                  </div>
                 </div>
               </div>
             )}
@@ -270,7 +270,7 @@ export default function Home() {
                       <div className={styles.historyTime}>{test.timestamp}</div>
                       <div className={styles.historyDetails}>
                         <span>IP: {test.ip}</span>
-                        {/* <span>位置: {test.location}</span> */}
+                        <span>位置: {test.location}</span>
                         <span>延迟: {test.delay}ms</span>
                       </div>
                     </div>

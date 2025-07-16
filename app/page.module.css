@@ -129,6 +129,11 @@
   align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid var(--gray-alpha-200);
+  span {
+    max-width: 200px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
 }
 
 .resultItem:last-child {
@@ -242,41 +247,41 @@
   .page {
     padding: 16px;
   }
-  
+
   .container {
     padding: 20px;
   }
-  
+
   .header {
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
-  
+
   .title {
     font-size: 2rem;
   }
-  
+
   .buttonGroup {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .testButton {
     width: 100%;
     max-width: 200px;
   }
-  
+
   .resultGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .historyHeader {
     flex-direction: column;
     gap: 12px;
     align-items: stretch;
   }
-  
+
   .historyDetails {
     flex-direction: column;
     gap: 8px;
