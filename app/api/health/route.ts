@@ -14,10 +14,13 @@ async function testExternalConnectivity(): Promise<{
   allSuccess: boolean;
   results: ConnectivityTestResult[];
 }> {
-  const testEndpoints = ["https://www.baidu.com/", "https://www.google.com/"];
+  const testEndpoints = [
+    "https://opendata.baidu.com/",
+    "https://www.baidu.com/",
+  ];
   const results: ConnectivityTestResult[] = [];
 
-  console.log("开始测试外部网络连通性...");
+  // console.log("开始测试外部网络连通性...");
 
   // 测试所有端点并收集结果
   const testPromises = testEndpoints.map(async (url) => {
@@ -38,42 +41,42 @@ async function testExternalConnectivity(): Promise<{
       const responseTime = Date.now() - startTime;
 
       if (response.ok) {
-        console.log(`外部网络连通性测试成功 - ${url} (${responseTime}ms)`);
+        // console.log(`外部网络连通性测试成功 - ${url} (${responseTime}ms)`);
         results.push({
           url,
           success: true,
-          responseTime
+          responseTime,
         });
         return true;
       } else {
-        console.warn(`外部网络连通性测试失败 - ${url} (HTTP ${response.status})`);
+        // console.warn(`外部网络连通性测试失败 - ${url} (HTTP ${response.status})`);
         results.push({
           url,
           success: false,
           responseTime,
-          error: `HTTP status: ${response.status}`
+          error: `HTTP status: ${response.status}`,
         });
         return false;
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
       let errorMessage = "未知错误";
-      
+
       if (error instanceof Error) {
         if (error.name === "AbortError") {
-          console.warn(`外部网络连通性测试超时 - ${url}`);
+          // console.warn(`外部网络连通性测试超时 - ${url}`);
           errorMessage = "请求超时";
         } else {
-          console.warn(`外部网络连通性测试异常 - ${url}: ${error.message}`);
+          // console.warn(`外部网络连通性测试异常 - ${url}: ${error.message}`);
           errorMessage = error.message;
         }
       }
-      
+
       results.push({
         url,
         success: false,
         responseTime,
-        error: errorMessage
+        error: errorMessage,
       });
       return false;
     }
@@ -81,18 +84,18 @@ async function testExternalConnectivity(): Promise<{
 
   // 等待所有测试完成
   const testResults = await Promise.all(testPromises);
-  const allSuccess = testResults.every(result => result === true);
-  
-  console.log(`外部网络连通性测试完成，全部成功: ${allSuccess}`);
-  
+  const allSuccess = testResults.every((result) => result === true);
+
+  // console.log(`外部网络连通性测试完成，全部成功: ${allSuccess}`);
+
   return {
     allSuccess,
-    results
+    results,
   };
 }
 
 export async function GET(request: NextRequest) {
-  console.log("开始执行健康检查...");
+  // console.log("执行健康检查...");
   const healthCheck = {
     server: {
       status: "ok",

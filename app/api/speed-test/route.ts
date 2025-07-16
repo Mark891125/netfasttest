@@ -5,82 +5,97 @@ import { v4 as uuidv4 } from "uuid";
 interface SpeedTestResult {
   id: string;
   timestamp: string;
+  receptionTime: number;
+  returnTime: number;
   ip: string;
-  responseTime: number;
-  requestSize: number;
-  userAgent: string;
+  location?: string;
 }
 
-interface SpeedTestResult {
-  id: string;
-  timestamp: string;
-  ip: string;
-  responseTime: number;
-  requestSize: number;
-  userAgent: string;
-}
-
-export async function POST(request: NextRequest) {
-  const serverReceiveTime = Date.now();
-
+function getRequestClientIP(request: NextRequest): string {
   // 获取客户端IP
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   let clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
-  // clientIp = "101.82.153.167:2443";
+
   if (clientIp.startsWith("::ffff:")) {
-    // 去掉IPv6格式的前缀
-    clientIp = clientIp.substring(7);
+    clientIp = clientIp.substring(7); // 去掉IPv6格式的前缀
   }
+
   if (clientIp.indexOf(":")) {
     // 去掉IPv6格式的前缀
     clientIp = clientIp.split(":")[0];
   }
+  // return "220.12.41.11";
+  return clientIp;
+}
+async function getIPLocation(ip: string): Promise<string> {
+  let location = "";
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
 
+    const locationResponse = await fetch(
+      `http://opendata.baidu.com/api.php?query=${ip}&resource_id=6006&oe=utf8`,
+      {
+        signal: controller.signal,
+      }
+    );
+
+    clearTimeout(timeoutId); // 清除超时定时器
+
+    if (locationResponse.ok) {
+      const locationData = await locationResponse.json();
+      if (locationData.data && locationData.data.length > 0) {
+        const locationInfo = locationData.data[0];
+        location = locationInfo.location || "";
+      }
+    }
+    return location;
+  } catch (error) {
+    console.warn("获取IP归属地失败:", error);
+    return "";
+  }
+}
+
+export async function POST(request: NextRequest) {
+  let clientIp = getRequestClientIP(request);
+  const receptionTime = Date.now();
   // 获取请求信息
   const userAgent = request.headers.get("user-agent") || "";
-  const contentLength = request.headers.get("content-length") || "0";
 
   try {
     const requestBody = await request.json(); // 读取请求体
-    const clientSendTime = requestBody.timestamp || serverReceiveTime; // 客户端发送时间戳
+    const clientSendTime = requestBody.timestamp; // 客户端发送时间戳
 
-    let responseTime = serverReceiveTime - clientSendTime; // 网络传输时间
-
-    // 防止负数响应时间（可能由于时间同步问题或时钟偏差）
-    if (responseTime < 0) {
-      console.warn(
-        `检测到负数响应时间: ${responseTime}ms, 客户端时间: ${new Date(
-          clientSendTime
-        ).toISOString()}, 服务器时间: ${new Date(
-          serverReceiveTime
-        ).toISOString()}`
-      );
-      responseTime = Math.abs(responseTime); // 取绝对值，或者可以设为最小值如1ms
+    // 检测IP归属地
+    let location = "";
+    if (
+      clientIp == "127.0.0.1" ||
+      clientIp.startsWith("::1") ||
+      clientIp.startsWith("192.168.") ||
+      clientIp.startsWith("10.") ||
+      clientIp.startsWith("172.")
+    ) {
+      location = "本地网络";
+    } else {
+      location = await getIPLocation(clientIp);
     }
-
-    // 对于异常大的延迟也进行警告（可能是时钟问题）
-    if (responseTime > 30000) {
-      // 30秒
-      console.warn(
-        `检测到异常大的响应时间: ${responseTime}ms, 可能存在时钟同步问题`
-      );
-    }
-
     // 创建基础测试结果，先不包含地理位置信息
     const result: SpeedTestResult = {
       id: uuidv4(),
       timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+      returnTime: Date.now(),
+      receptionTime,
       ip: clientIp,
-      responseTime: responseTime, // 这是准确的网络响应时间
-      requestSize: parseInt(contentLength),
-      userAgent,
+      location,
     };
     // 打印响应时间信息
     console.log(
-      `[${result.timestamp}] IP: ${result.ip}  | 网络延迟: ${
-        result.responseTime
-      }ms |  客户端发送时间: ${new Date(clientSendTime).toLocaleString()}`
+      `[${result.timestamp}] IP: ${result.ip}  | 
+      延迟: ${receptionTime - clientSendTime}ms |
+      位置: ${result.location || "未知"} |
+      代理: ${userAgent} |        
+      时间: ${new Date(clientSendTime).toLocaleString()}`
     );
 
     return NextResponse.json({
@@ -95,26 +110,32 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 export async function GET(request: NextRequest) {
-  // 获取客户端IP
-  const forwarded = request.headers.get("x-forwarded-for");
-  const realIp = request.headers.get("x-real-ip");
-  let clientIp = forwarded ? forwarded.split(",")[0] : realIp || "127.0.0.1";
+  let clientIp = getRequestClientIP(request);
 
-  if (clientIp.startsWith("::ffff:")) {
-    clientIp = clientIp.substring(7); // 去掉IPv6格式的前缀
-  }
+  // 获取客户端发送时间戳
+  const url = new URL(request.url);
+  const clientSendTime = url.searchParams.get("_t");
+  const clientSendTimeMs = clientSendTime
+    ? parseInt(clientSendTime)
+    : Date.now();
+
   // 打印到标准输出
   console.log(
-    `[${format(new Date(), "yyyy-MM-dd HH:mm:ss")}] GET IP: ${clientIp} }`
+    `[${format(
+      new Date(),
+      "yyyy-MM-dd HH:mm:ss"
+    )}] GET IP: ${clientIp} ｜ 发送时间: ${new Date(
+      clientSendTimeMs
+    ).toLocaleString()}`
   );
 
   return NextResponse.json({
     success: true,
     data: {
       ip: clientIp,
-      timestamp: Date.now(),
+      receptionTime: clientSendTimeMs,
+      returnTime: Date.now(),
     },
   });
 }

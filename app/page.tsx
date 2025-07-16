@@ -7,13 +7,9 @@ import NetworkStatus from "./components/NetworkStatus";
 interface TestResult {
   id: string;
   timestamp: string;
+  delay: number;
   ip: string;
   location: string;
-  country: string;
-  city: string;
-  responseTime: number;
-  requestSize: number;
-  userAgent: string;
 }
 
 export default function Home() {
@@ -21,8 +17,8 @@ export default function Home() {
   const [currentTest, setCurrentTest] = useState<TestResult | null>(null);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [timeDiff, setTimeDiff] = useState<number>(0);
   const [rtt, setRTT] = useState<number>(0);
+  const [timeDiff, setTimeDiff] = useState<number>(0);
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
@@ -30,7 +26,6 @@ export default function Home() {
     if (saved) {
       setTestHistory(JSON.parse(saved));
     }
-
     // 页面加载时同步服务器时间
     syncServerTime();
   }, []);
@@ -65,26 +60,13 @@ export default function Home() {
       const clientReceiveTime = Date.now();
 
       if (response.ok) {
-        const result = await response.json();
-        const { timestamp } = result.data;
-
-        // 计算时钟差
-        const clockOffset = calculateClockOffset(
-          clientSendTime,
-          timestamp,
-          timestamp,
-          clientReceiveTime
-        );
-
         // 计算往返时间 (RTT)
         const rtt = clientReceiveTime - clientSendTime;
 
-        setTimeDiff(clockOffset);
         setRTT(rtt);
       }
     } catch (error) {
       console.error("服务器时间同步失败:", error);
-      setTimeDiff(0); // 同步失败时使用本地时间
     }
   };
 
@@ -99,20 +81,22 @@ export default function Home() {
   const runLatencyTest = async () => {
     setIsLoading(true);
     try {
+      const clientSendTime = Date.now();
       const response = await fetch("/api/speed-test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          test: "latency",
           timestamp: Date.now(), // 发送调整后的时间戳
         }),
       });
+      const clientReceiveTime = Date.now();
 
       if (response.ok) {
         const result = await response.json();
 
+        // 显示本地化时间
         const timezone =
           Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai";
         const timestamp = new Date().toLocaleDateString("zh-CN", {
@@ -125,67 +109,37 @@ export default function Home() {
           second: "2-digit",
         });
         result.data.timestamp = timestamp;
-        // 直接使用服务器返回的网络延迟时间
-        setCurrentTest(result.data);
 
-        console.log(`网速测试完成: ${result.data.responseTime}ms`);
-        // result.data.ip = "202.57.204.3";
-        const clientIP = result.data.ip;
-        // 只对非本地IP进行地理位置查询
-        if (
-          clientIP == "127.0.0.1" ||
-          clientIP.startsWith("::1") ||
-          clientIP.startsWith("192.168.") ||
-          clientIP.startsWith("10.") ||
-          clientIP.startsWith("172.")
-        ) {
-          const testRes = {
-            ...result.data,
-            location: `本地网络`,
-            country: `本地`,
-            city: `本地`,
-          };
-          setCurrentTest(testRes);
-          saveToHistory(testRes);
-        } else {
-          console.log(`查询IP地址: ${clientIP}`);
+        const { receptionTime, returnTime } = result.data;
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+        // const delay = clientReceiveTime - clientSendTime;
 
-          setCurrentTest({
-            ...result.data,
-            location: `查询中...`,
-          });
-          const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`, {
-            signal: controller.signal,
-          });
-          clearTimeout(timeoutId); // 清除超时计时器
+        const serverProcessingTime = returnTime - receptionTime;
+        const totalTime = clientReceiveTime - clientSendTime;
+        const delay = totalTime - serverProcessingTime;
 
-          if (ipResponse.ok) {
-            const ipData = await ipResponse.json();
-            const testRes = {
-              ...result.data,
-              location: `${ipData.city}, ${ipData.region}, ${ipData.country_name}`,
-              country: ipData.country_name,
-              city: ipData.city,
-            };
-            setCurrentTest(testRes);
+        const timeDiff = calculateClockOffset(
+          clientSendTime,
+          receptionTime,
+          returnTime,
+          clientReceiveTime
+        );
+        setTimeDiff(timeDiff);
 
-            saveToHistory(testRes);
-          } else {
-            // 请求失败但未超时的情况
-            console.warn("IP地理位置查询失败");
-            const testRes = {
-              ...result.data,
-              location: `未知位置`,
-              country: `未知国家`,
-              city: `未知城市`,
-            };
-            setCurrentTest(testRes);
-            saveToHistory(testRes);
-          }
+        if (result.data.location === "") {
+          const location = fetchIPLocation(result.data.ip);
+          result.data.location = location;
         }
+        // 直接使用服务器返回的网络延迟时间
+        setCurrentTest({
+          ...result.data,
+          delay,
+        });
+
+        saveToHistory({
+          ...result.data,
+          delay,
+        });
       }
 
       // 测试完成后重新同步时间，为下次测试做准备
@@ -197,6 +151,36 @@ export default function Home() {
     }
   };
 
+  async function fetchIPLocation(ip: string): Promise<string> {
+    // const clientIP = "220.243.155.79";
+    const clientIP = ip;
+    // 只对非本地IP进行地理位置查询
+    if (
+      clientIP == "127.0.0.1" ||
+      clientIP.startsWith("::1") ||
+      clientIP.startsWith("192.168.") ||
+      clientIP.startsWith("10.") ||
+      clientIP.startsWith("172.")
+    ) {
+      return Promise.resolve("本地网络");
+    } else {
+      console.log(`查询IP地址: ${clientIP}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3秒超时
+      const ipResponse = await fetch(`https://ipapi.co/${clientIP}/json/`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId); // 清除超时计时器
+
+      if (ipResponse.ok) {
+        const ipData = await ipResponse.json();
+        return ipData.location || "未知位置";
+      } else {
+        return "未知位置";
+      }
+    }
+  }
   // 清除历史记录
   const clearHistory = () => {
     setTestHistory([]);
@@ -249,12 +233,12 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <span>{currentTest.responseTime}ms</span>
+                    <span>{currentTest.delay}ms</span>
                   </div>
-                  <div className={styles.resultItem}>
+                  {/* <div className={styles.resultItem}>
                     <label>位置:</label>
                     <span>{currentTest.location}</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}
@@ -286,8 +270,8 @@ export default function Home() {
                       <div className={styles.historyTime}>{test.timestamp}</div>
                       <div className={styles.historyDetails}>
                         <span>IP: {test.ip}</span>
-                        <span>位置: {test.location}</span>
-                        <span>延迟: {test.responseTime}ms</span>
+                        {/* <span>位置: {test.location}</span> */}
+                        <span>延迟: {test.delay}ms</span>
                       </div>
                     </div>
                   ))
