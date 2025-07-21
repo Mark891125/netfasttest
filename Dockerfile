@@ -17,6 +17,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# 删除 Swagger 文档相关文件（生产环境不包含）
+# RUN rm -rf app/docs
+
 # 设置环境变量
 ENV NEXT_TELEMETRY_DISABLED 1
 

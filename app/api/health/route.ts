@@ -93,7 +93,6 @@ async function testExternalConnectivity(): Promise<{
     results,
   };
 }
-
 export async function GET(request: NextRequest) {
   // 检查是否有 _l 参数
   const url = new URL(request.url);

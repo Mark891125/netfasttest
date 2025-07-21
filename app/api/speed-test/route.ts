@@ -133,6 +133,52 @@ async function getIPLocation(ip: string): Promise<string> {
   }
 }
 
+// @Swagger
+
+/**
+ * @swagger
+ * /api/speed-test:
+ *   post:
+ *     summary: 网络测速接口
+ *     tags:
+ *       - SpeedTest
+ *     description: 客户端发送时间戳，服务端返回延迟、IP归属地等信息。
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               timestamp:
+ *                 type: integer
+ *                 description: 客户端发送的时间戳（毫秒）
+ *     responses:
+ *       200:
+ *         description: 测试结果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     timestamp:
+ *                       type: string
+ *                     receptionTime:
+ *                       type: integer
+ *                     returnTime:
+ *                       type: integer
+ *                     ip:
+ *                       type: string
+ *                     location:
+ *                       type: string
+ */
 export async function POST(request: NextRequest) {
   let clientIp = getRequestClientIP(request);
   const receptionTime = Date.now();
