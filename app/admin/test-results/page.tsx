@@ -103,20 +103,21 @@ export default function TestResultsPage() {
             <tbody>
               {results.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.storeID}</td>
-                  <td>
+                  <td data-label="StoreID">{r.storeID}</td>
+                  <td data-label="TestTime">
                     {r.clientTime
                       ? new Date(r.clientTime).toLocaleString()
                       : ""}
                   </td>
                   <td
+                    data-label="Delay"
                     className={styles.delay}
                     style={{ color: r.delay > 3000 ? "red" : "black" }}
                   >
                     {r.delay}
                   </td>
-                  <td>{r.ip}</td>
-                  <td>{r.location || ""}</td>
+                  <td data-label="IP">{r.ip}</td>
+                  <td data-label="Location">{r.location || ""}</td>
                 </tr>
               ))}
             </tbody>
