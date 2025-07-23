@@ -49,13 +49,32 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    // 解析分页参数
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSize = Math.max(1, Math.min(200, parseInt(searchParams.get("pageSize") || "20", 10)));
+
+    // 查询总数
+    const total = await prisma.testResult.count({ where });
+
+    // 查询分页数据
     const results = await prisma.testResult.findMany({
       where,
-      orderBy: { id: "desc" },
-      take: 100,
+      orderBy: [
+        { clientTime: "desc" },
+        { id: "desc" }
+      ],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
-    return NextResponse.json(results);
+
+    return NextResponse.json({
+      total,
+      page,
+      pageSize,
+      results,
+    });
   } catch (err) {
+    console.error("Error fetching test results:", err);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

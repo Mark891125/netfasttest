@@ -1,3 +1,192 @@
+body {
+  background: #fafbfc;
+}
+.test-results-page {
+  padding: 32px;
+  background: #fafbfc;
+  min-height: 100vh;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-family: system-ui, sans-serif;
+  color: #222;
+
+  h1 {
+    font-weight: 700;
+    font-size: 28px;
+    color: #222;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+    border-left: 6px solid #2563eb;
+    padding-left: 12px;
+  }
+
+  .search-form {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    align-items: center;
+
+    input[type="text"],
+    input[type="date"] {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: #fff;
+      color: #222;
+      outline: none;
+      font-size: 15px;
+      min-width: 140px;
+      transition: border-color 0.2s;
+    }
+    input[type="text"] {
+      min-width: 180px;
+    }
+    button {
+      padding: 8px 24px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      box-shadow: none;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #bcd0f7;
+      color: #fff;
+      cursor: not-allowed;
+    }
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    max-width: 900px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    min-width: 700px;
+    thead tr {
+      background: #f3f4f6;
+      color: #222;
+      text-align: left;
+    }
+    th {
+      padding: 10px 8px;
+      font-weight: 600;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    td {
+      padding: 8px 6px;
+      color: #222;
+    }
+    tbody tr {
+      border-bottom: 1px solid #f1f1f1;
+      background: inherit;
+      transition: background 0.2s;
+      &:hover {
+        background: #e0e7ef;
+      }
+    }
+    td.delay {
+      color: #2563eb;
+      font-weight: 600;
+    }
+    @media (max-width: 700px) {
+      min-width: 0;
+      max-width: 100%;
+      font-size: 14px;
+      thead {
+        display: none;
+      }
+      tbody,
+      tr,
+      td {
+        display: block;
+        width: 100%;
+      }
+      tr {
+        margin-bottom: 18px;
+        border-bottom: 2px solid #f1f1f1;
+        box-shadow: none;
+        border-radius: 8px;
+        background: #fff;
+        padding: 8px 0;
+      }
+      td {
+        position: relative;
+        padding-left: 48%;
+        min-height: 32px;
+        border: none;
+        border-bottom: 1px solid #f3f4f6;
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+      td:before {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44%;
+        white-space: nowrap;
+        font-weight: 600;
+        color: #888;
+        content: attr(data-label);
+      }
+    }
+  }
+  .loading {
+    color: #888;
+    font-size: 16px;
+    margin: 24px 0;
+  }
+  .error {
+    color: #e11d48;
+    font-size: 16px;
+    margin: 24px 0;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0 0 0;
+  }
+  .pageBtn {
+    background: #f5f6fa;
+    color: #222;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 6px 18px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    box-shadow: none;
+  }
+  .pageBtn:disabled {
+    color: #bbb;
+    background: #f5f6fa;
+    border-color: #e0e0e0;
+    cursor: not-allowed;
+  }
+  .pageBtn:not(:disabled):hover {
+    background: #2563eb;
+    color: #fff;
+  }
+  .pageInfo {
+    font-size: 15px;
+    color: #555;
+  }
+}
 .test-results-page {
   padding: 32px;
   background: #fafbfc;
@@ -53,6 +242,7 @@
   .table-wrapper {
     overflow-x: auto;
     border-radius: 8px;
+    max-width: 900px;
   }
   table {
     width: 100%;
