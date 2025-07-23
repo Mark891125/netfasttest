@@ -10,15 +10,7 @@ export const getApiDocs = async () => {
         title: "NetFastTest API",
         version: packageJson.version,
       },
-      components: {
-        securitySchemes: {
-          BearerAuth: {
-            type: "http",
-            scheme: "bearer",
-            bearerFormat: "JWT",
-          },
-        },
-      },
+      components: {},
       security: [],
     },
   });

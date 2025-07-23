@@ -14,16 +14,18 @@ RUN npm ci
 # 构建阶段
 FROM base AS builder
 WORKDIR /app
+# RUN apk add --no-cache sqlite sqlite-libs   # 安装 SQLite 依赖
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # 删除 Swagger 文档相关文件（生产环境不包含）
-# RUN rm -rf app/docs
+RUN rm -rf app/docs
 
 # 设置环境变量
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # 构建应用
+RUN npx prisma generate
 RUN npm run build
 
 # 生产依赖阶段
@@ -35,6 +37,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 # 运行阶段
 FROM base AS runner
 WORKDIR /app
+RUN apk add --no-cache openssh sqlite sqlite-libs
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -59,6 +62,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # 复制静态文件
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# 复制 SQLite 数据库文件
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/prod.db ./prisma/dev.db
 
 EXPOSE 80 2222
 

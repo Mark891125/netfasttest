@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 interface SpeedTestResult {
   id: string;
-  timestamp: string;
   receptionTime: number;
   returnTime: number;
   ip: string;
   location?: string;
+  storeID?: string;
 }
 
 function getRequestClientIP(request: NextRequest): string {
@@ -133,8 +135,6 @@ async function getIPLocation(ip: string): Promise<string> {
   }
 }
 
-// @Swagger
-
 /**
  * @swagger
  * /api/speed-test:
@@ -149,10 +149,15 @@ async function getIPLocation(ip: string): Promise<string> {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *                 - storeID
  *             properties:
  *               timestamp:
  *                 type: integer
- *                 description: 客户端发送的时间戳（毫秒）
+ *                 description: 客户端发送的时间戳
+ *               storeID:
+ *                 type: string
+ *                 description: 店铺ID
  *     responses:
  *       200:
  *         description: 测试结果
@@ -168,7 +173,7 @@ async function getIPLocation(ip: string): Promise<string> {
  *                   properties:
  *                     id:
  *                       type: string
- *                     timestamp:
+ *                     clientTime:
  *                       type: string
  *                     receptionTime:
  *                       type: integer
@@ -178,6 +183,28 @@ async function getIPLocation(ip: string): Promise<string> {
  *                       type: string
  *                     location:
  *                       type: string
+ *       400:
+ *         description: 格式格式错误或缺少店铺ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: 服务端错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 error:
+ *                   type: string
  */
 export async function POST(request: NextRequest) {
   let clientIp = getRequestClientIP(request);
@@ -188,38 +215,66 @@ export async function POST(request: NextRequest) {
   try {
     const requestBody = await request.json(); // 读取请求体
     const clientSendTime = requestBody.timestamp; // 客户端发送时间戳
+    const storeID = requestBody.storeID;
+    if (storeID == null) {
+      return NextResponse.json(
+        { success: false, message: "缺少店铺ID" },
+        { status: 400 }
+      );
+    }
 
     // 检测IP归属地
     const location = await getIPLocation(clientIp);
 
-    // 创建基础测试结果，先不包含地理位置信息
+    // 创建基础测试结果，包含地理位置信息和店铺ID
     const result: SpeedTestResult = {
       id: uuidv4(),
-      timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
       returnTime: Date.now(),
       receptionTime,
       ip: clientIp,
       location,
+      storeID,
     };
     // 打印响应时间信息
     console.log(
-      `[${result.timestamp}] IP: ${result.ip}  | 
-      延迟: ${receptionTime - clientSendTime}ms |
-      位置: ${result.location || "未知"} |
-      代理: ${userAgent} |        
-      时间: ${new Date(clientSendTime).toLocaleString()}`
+      `IP: ${result.ip}  | 
+       延迟: ${receptionTime - clientSendTime}ms |
+       位置: ${result.location || "未知"} |
+       店铺ID: ${storeID || "无"} |
+       代理: ${userAgent} |        
+       时间: ${new Date(clientSendTime).toLocaleString()}`
     );
 
+    await prisma.testResult.create({
+      data: {
+        id: result.id,
+        clientTime: new Date(clientSendTime),
+        receptionTime: new Date(result.receptionTime),
+        returnTime: new Date(result.returnTime),
+        delay: -1,
+        ip: result.ip,
+        location: result.location || null, // 如果没有位置则存储为null
+        storeID,
+      },
+    });
     return NextResponse.json({
       success: true,
       data: result,
     });
   } catch (error) {
-    console.error("速度测试错误:", error);
-    return NextResponse.json(
-      { success: false, error: "测试失败" },
-      { status: 500 }
-    );
+    const err = error as Error;
+    if (err.name === "SyntaxError" || err.message?.includes("JSON")) {
+      return NextResponse.json(
+        { success: false, message: "请求体不是合法 JSON 格式" },
+        { status: 400 }
+      );
+    } else {
+      console.error("速度测试错误:", error);
+      return NextResponse.json(
+        { success: false, error: "测试失败" },
+        { status: 500 }
+      );
+    }
   }
 }
 export async function GET(request: NextRequest) {

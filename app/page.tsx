@@ -76,6 +76,27 @@ export default function Home() {
     setTestHistory(newHistory);
     sessionStorage.setItem("speedTestHistory", JSON.stringify(newHistory));
   };
+  // 提交测试结果
+  const submitTestResult = async (id: string, delay: number) => {
+    try {
+      const response = await fetch("/api/update-result", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id, delay }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("测试结果上传成功:", result);
+      } else {
+        console.error("测试结果上传失败");
+      }
+    } catch (error) {
+      console.error("提交测试结果失败:", error);
+    }
+  };
 
   // 执行网络网速测试
   const runLatencyTest = async () => {
@@ -89,6 +110,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           timestamp: Date.now(), // 发送调整后的时间戳
+          storeID: "default", // 假设有一个默认的storeID
         }),
       });
       const clientReceiveTime = Date.now();
@@ -140,6 +162,8 @@ export default function Home() {
           ...result.data,
           delay,
         });
+        // 提交数据库
+        submitTestResult(result.data.id, delay);
       }
 
       // 测试完成后重新同步时间，为下次测试做准备

@@ -1,0 +1,19 @@
+datasource db {
+    provider = "sqlite"
+    url      = "file:./dev.db"
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+model TestResult {
+    id            String    @id
+    storeID       String
+    clientTime    DateTime?
+    receptionTime DateTime?
+    returnTime    DateTime?
+    delay         Int
+    ip            String
+    location      String? // 可选字段
+}

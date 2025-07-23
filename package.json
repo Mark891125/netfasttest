@@ -6,16 +6,18 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "db": " prisma studio",
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/client": "^6.12.0",
     "@types/swagger-ui-react": "^5.18.0",
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",
     "next": "15.3.4",
     "next-swagger-doc": "^0.4.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "swagger-ui-react": "^5.27.0",
     "uuid": "^11.1.0"
   },
@@ -26,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
+    "prisma": "^6.12.0",
     "typescript": "^5"
   }
 }
