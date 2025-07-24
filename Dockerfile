@@ -26,7 +26,6 @@ RUN rm -rf app/docs
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # 构建应用
-RUN npx prisma generate
 RUN npm run build
 RUN npx prisma migrate deploy
 

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "db": " prisma studio",
     "db:reset": "sqlite3 prisma/prod.db \"VACUUM;\"",
