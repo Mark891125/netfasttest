@@ -10,6 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 # 安装所有依赖（包括 devDependencies，构建时需要）
 RUN npm ci
+COPY .env.production .env.production
 
 # 构建阶段
 FROM base AS builder
@@ -27,6 +28,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # 构建应用
 RUN npx prisma generate
 RUN npm run build
+RUN npx prisma migrate deploy
 
 # 生产依赖阶段
 FROM base AS prod-deps

@@ -232,8 +232,8 @@ function randomStoreID() {
 
 function randomLocation() {
   const locations = [
-    "北京",
-    "上海",
+    "北京市",
+    "上海市",
     "广州",
     "深圳",
     "成都",

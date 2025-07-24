@@ -19,6 +19,15 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [rtt, setRTT] = useState<number>(0);
   const [timeDiff, setTimeDiff] = useState<number>(0);
+  // 获取storeID参数
+  function getStoreIDFromURL(): string {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("_s") || "default";
+    }
+    return "default";
+  }
+  const storeID = getStoreIDFromURL();
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
@@ -110,7 +119,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           timestamp: Date.now(), // 发送调整后的时间戳
-          storeID: "default", // 假设有一个默认的storeID
+          storeID, // 使用url参数中的storeID
         }),
       });
       const clientReceiveTime = Date.now();

@@ -1,6 +1,6 @@
 datasource db {
     provider = "sqlite"
-    url      = "file:./dev.db"
+    url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -16,4 +16,14 @@ model TestResult {
     delay         Int
     ip            String
     location      String? // 可选字段
+}
+
+model Store {
+    id      String @id
+    code    String @unique
+    name    String
+    address String
+
+    latitude  Float?
+    longitude Float?
 }
