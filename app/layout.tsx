@@ -12,8 +12,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log(`NetFastTest 版本号: ${packageJson.version}`);
-
   return (
     <html lang="en" data-v={packageJson.version} data-time={Date.now()}>
       <body className={`app`}>{children}</body>

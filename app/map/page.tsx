@@ -78,9 +78,7 @@ const delayCharts: React.FC = () => {
     let chart: echarts.ECharts | null = null;
     function renderChart() {
       if (chartRef.current) {
-        if (!(echarts as any).maps?.china) {
-          echarts.registerMap("china", chinaMap as any);
-        }
+        echarts.registerMap("china", chinaMap as any);
         if (!chart) {
           chart = echarts.init(chartRef.current);
         }
