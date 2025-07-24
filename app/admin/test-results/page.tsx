@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import "../admin-globals.scss";
 import styles from "./page.module.scss";
 
 interface TestResult {
