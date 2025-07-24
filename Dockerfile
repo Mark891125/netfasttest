@@ -27,7 +27,11 @@ ENV NEXT_TELEMETRY_DISABLED 1
 
 # 构建应用
 RUN npm run build
+# 拷贝生产环境配置文件
+# COPY .env.production ./
+ENV DATABASE_URL="file:./prod.db"
 RUN npx prisma migrate deploy
+
 
 # 生产依赖阶段
 FROM base AS prod-deps
@@ -63,8 +67,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # 复制静态文件
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
 # 复制 SQLite 数据库文件
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/prod.db ./prisma/dev.db
+# 拷贝生产环境配置文件
+COPY --from=builder /app/.env.production .env.production
 
 EXPOSE 80 2222
 
