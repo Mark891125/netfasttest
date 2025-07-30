@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
 
     // 解析分页参数
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const pageSize = Math.max(1, Math.min(200, parseInt(searchParams.get("pageSize") || "20", 10)));
+    const pageSize = Math.max(
+      1,
+      Math.min(200, parseInt(searchParams.get("pageSize") || "20", 10))
+    );
 
     // 查询总数
     const total = await prisma.testResult.count({ where });
@@ -59,19 +62,32 @@ export async function GET(request: NextRequest) {
     // 查询分页数据
     const results = await prisma.testResult.findMany({
       where,
-      orderBy: [
-        { clientTime: "desc" },
-        { id: "desc" }
-      ],
+      orderBy: [{ clientTime: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: {
+        store: {
+          select: {
+            code: true,
+            name: true,
+            latitude: true,
+            longitude: true,
+          },
+        },
+      },
     });
-
+    const flatRes = results.map(({ store, ...rest }) => ({
+      ...rest,
+      storeName: store?.name || null,
+      storeLatitude: store?.latitude || null,
+      storeLongitude: store?.longitude || null,
+    }));
+    console.log("Test results fetched:", results[0]);
     return NextResponse.json({
       total,
       page,
       pageSize,
-      results,
+      results: flatRes || [],
     });
   } catch (err) {
     console.error("Error fetching test results:", err);

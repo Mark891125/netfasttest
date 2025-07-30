@@ -151,6 +151,7 @@ async function getIPLocation(ip: string): Promise<string> {
  *             type: object
  *             required:
  *                 - storeID
+ *                 - tiiID
  *             properties:
  *               timestamp:
  *                 type: integer
@@ -158,6 +159,12 @@ async function getIPLocation(ip: string): Promise<string> {
  *               storeID:
  *                 type: string
  *                 description: 店铺ID
+ *               storeName:
+ *                 type: string
+ *                 description: 店铺名称
+ *               tiiID:
+ *                 type: string
+ *                 description: TiIID
  *     responses:
  *       200:
  *         description: 测试结果
@@ -216,9 +223,11 @@ export async function POST(request: NextRequest) {
     const requestBody = await request.json(); // 读取请求体
     const clientSendTime = requestBody.timestamp; // 客户端发送时间戳
     const storeID = requestBody.storeID;
-    if (storeID == null) {
+    const storeName = requestBody.storeName; // 可选的店铺名称
+    const tiiID = requestBody.tiiID; // 可选的tii
+    if (storeID == null || tiiID == null) {
       return NextResponse.json(
-        { success: false, message: "缺少店铺ID" },
+        { success: false, message: "缺少必要参数" },
         { status: 400 }
       );
     }
@@ -233,7 +242,6 @@ export async function POST(request: NextRequest) {
       receptionTime,
       ip: clientIp,
       location,
-      storeID,
     };
     // 打印响应时间信息
     console.log(
@@ -255,8 +263,27 @@ export async function POST(request: NextRequest) {
         ip: result.ip,
         location: result.location || null, // 如果没有位置则存储为null
         storeID,
+        storeName: storeName || null, // 如果没有店铺名称则存储为null
+        tiiID: tiiID || null, // 如果没有tii则存储为
       },
     });
+    // 如果数据库中不存在这个店铺，新建店铺记录
+    const existStore = await prisma.store.findUnique({
+      where: { code: storeID },
+    });
+
+    if (!existStore) {
+      console.log(`店铺 ${storeID} 不存在，创建新店铺记录`);
+      prisma.store.create({
+        data: {
+          id: storeID,
+          code: storeID,
+          name: storeName || storeID,
+          address: "",
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: result,

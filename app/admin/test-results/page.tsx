@@ -2,16 +2,20 @@
 import React, { useEffect, useState } from "react";
 import "../admin-globals.scss";
 import styles from "./page.module.scss";
+import useLocalStorage from "@/app/hooks/useLocalStorage";
 
 interface TestResult {
   id: string;
-  storeID: string;
   clientTime?: string;
   receptionTime?: string;
   returnTime?: string;
   delay: number;
   ip: string;
   location?: string;
+
+  storeID: string;
+  storeName?: string;
+  tiiID?: string;
 }
 
 const PAGE_SIZE = 20;
@@ -29,12 +33,7 @@ export default function TestResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [date, setDate] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("testResultsDate") || defaultDate;
-    }
-    return defaultDate;
-  });
+  const [date, setDate] = useLocalStorage<string>("testResultsDate", defaultDate);
 
   const fetchData = (pageNum = 1) => {
     setLoading(true);
@@ -65,9 +64,7 @@ export default function TestResultsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (typeof window !== "undefined") {
-      localStorage.setItem("testResultsDate", date);
-    }
+    // localStorage 操作已由 useLocalStorage Hook 自动处理
     fetchData(1);
   };
 
@@ -91,11 +88,13 @@ export default function TestResultsPage() {
         <input
           type="date"
           value={date}
+          min={new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 10)}
+          max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => {
             setDate(e.target.value);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("testResultsDate", e.target.value);
-            }
+            // localStorage 操作已由 useLocalStorage Hook 自动处理
           }}
         />
         <button type="submit">搜索</button>
@@ -109,18 +108,21 @@ export default function TestResultsPage() {
               <thead>
                 <tr>
                   <th style={{ width: 60 }}>#</th>
-                  <th style={{ width: 120 }}>StoreID</th>
+                  <th>Store</th>
                   <th style={{ width: 200 }}>TestTime</th>
                   <th style={{ width: 120 }}>Delay</th>
-                  <th style={{ width: 160 }}>IP</th>
-                  <th>Location</th>
+                  <th style={{ width: 100 }}>TiIID</th>
+                  <th style={{ width: 140 }}>IP</th>
+                  <th style={{ width: 160 }}>Location</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r, idx) => (
                   <tr key={r.id}>
                     <td data-label="#">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                    <td data-label="StoreID">{r.storeID}</td>
+                    <td data-label="Store">
+                      [{r.storeID}]{r.storeName ? ` ${r.storeName}` : ""}
+                    </td>
                     <td data-label="TestTime">
                       {r.clientTime
                         ? new Date(r.clientTime).toLocaleString()
@@ -133,6 +135,7 @@ export default function TestResultsPage() {
                     >
                       {r.delay}
                     </td>
+                    <td data-label="TiIID">{r.tiiID}</td>
                     <td data-label="IP">{r.ip}</td>
                     <td data-label="Location">{r.location || ""}</td>
                   </tr>

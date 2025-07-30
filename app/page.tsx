@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import styles from "./page.module.css";
 import NetworkStatus from "./components/NetworkStatus";
+import React from "react";
+import useLocalStorage from "@/app/hooks/useLocalStorage";
 
 interface TestResult {
   id: string;
@@ -10,7 +12,12 @@ interface TestResult {
   delay: number;
   ip: string;
   location: string;
+  storeID: string;
+  storeName: string;
+  tiiID: string;
 }
+
+import SettingModal from "@/app/components/SettingModal";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,18 +26,14 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [rtt, setRTT] = useState<number>(0);
   const [timeDiff, setTimeDiff] = useState<number>(0);
-  // 获取storeID参数
-  function getStoreIDFromURL(): string {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("_s") || "default";
-    }
-    return "default";
-  }
-  const storeID = getStoreIDFromURL();
+
+  const [params, setParams] = useState<URLSearchParams | null>(null);
+  // const params = new URLSearchParams(window.location.search);
 
   // 从sessionStorage加载历史记录
   useEffect(() => {
+    setParams(new URLSearchParams(window.location.search));
+
     const saved = sessionStorage.getItem("speedTestHistory");
     if (saved) {
       setTestHistory(JSON.parse(saved));
@@ -60,7 +63,6 @@ export default function Home() {
       2
     );
   }
-
   // 同步服务器时间
   const syncServerTime = async () => {
     try {
@@ -78,7 +80,6 @@ export default function Home() {
       console.error("服务器时间同步失败:", error);
     }
   };
-
   // 保存历史记录到sessionStorage
   const saveToHistory = (result: TestResult) => {
     const newHistory = [result, ...testHistory].slice(0, 20); // 最多保存20条记录
@@ -110,6 +111,10 @@ export default function Home() {
   // 执行网络网速测试
   const runLatencyTest = async () => {
     setIsLoading(true);
+    // 优先用设置的 storeID/tiiID
+    const storeIDValue = storeID || params?.get("_s") || "default";
+    const storeName = params?.get("_n");
+    const tiiIDValue = tiiID || params?.get("_t") || "-";
     try {
       const clientSendTime = Date.now();
       const response = await fetch("/api/speed-test", {
@@ -118,8 +123,10 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          timestamp: Date.now(), // 发送调整后的时间戳
-          storeID, // 使用url参数中的storeID
+          timestamp: Date.now(),
+          storeID: storeIDValue,
+          storeName,
+          tiiID: tiiIDValue,
         }),
       });
       const clientReceiveTime = Date.now();
@@ -164,6 +171,9 @@ export default function Home() {
         // 直接使用服务器返回的网络延迟时间
         setCurrentTest({
           ...result.data,
+          storeID: storeIDValue, // 使用url参数中的storeID
+          storeName, // 使用url参数中的storeName
+          tiiID: tiiIDValue, //
           delay,
         });
 
@@ -220,6 +230,59 @@ export default function Home() {
     sessionStorage.removeItem("speedTestHistory");
   };
 
+  // 设置弹窗相关状态，使用 useLocalStorage Hook
+  const [tiiID, setTiiID] = useLocalStorage<string>("tiiID", "00");
+  const [storeID, setStoreID] = useLocalStorage<string>("storeID", "default");
+  const [autoTest, setAutoTest] = useLocalStorage<boolean>("autoTest", false);
+  const [autoTestTimer, setAutoTestTimer] = useState(0);
+  const storeList = [
+    { id: "default", name: "默认店铺" },
+    { id: "VCN001", name: "上海半岛酒店腕表与高级珠宝店" },
+    { id: "VCN002", name: "上海国金中心精品店" },
+    { id: "VCN003", name: "上海恒隆广场精品店" },
+    // 可根据实际情况扩展
+  ];
+
+  // 持续测试逻辑
+  useEffect(() => {}, []);
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    let count = 2;
+    let remain = 5;
+
+    if (autoTest) {
+      const run = async () => {
+        console.log(remain);
+        if (count >= 1) {
+          await runLatencyTest();
+          count--;
+          remain = 5;
+          setAutoTestTimer(remain);
+          timer = setInterval(() => {
+            remain--;
+
+            if (remain < 1) {
+              clearInterval(timer!);
+              run();
+            } else {
+              setAutoTestTimer(remain);
+            }
+          }, 1000);
+        } else {
+          setAutoTest(false);
+        }
+      };
+      run();
+    } else {
+      count = 10;
+      remain = 5;
+      setAutoTestTimer(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [autoTest, storeID]);
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -272,6 +335,19 @@ export default function Home() {
                     <label>位置:</label>
                     <span>{currentTest.location}</span>
                   </div>
+
+                  {currentTest.storeID !== null && (
+                    <div>
+                      <label>店铺:</label>
+                      <span>{`${currentTest.storeID}`}</span>
+                    </div>
+                  )}
+                  {currentTest.tiiID !== "-" && (
+                    <div>
+                      <label>TiIID:</label>
+                      <span>{currentTest.tiiID}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -314,6 +390,17 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <SettingModal
+        tiiID={tiiID}
+        setTiiID={setTiiID}
+        storeID={storeID}
+        setStoreID={setStoreID}
+        storeList={storeList}
+        autoTest={autoTest}
+        setAutoTest={setAutoTest}
+        autoTestTimer={autoTestTimer}
+      />
     </div>
   );
 }

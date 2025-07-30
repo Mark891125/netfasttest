@@ -8,14 +8,20 @@ generator client {
 }
 
 model TestResult {
-    id            String    @id
-    storeID       String
+    id String @id
+
     clientTime    DateTime?
     receptionTime DateTime?
     returnTime    DateTime?
     delay         Int
     ip            String
     location      String? // 可选字段
+
+    storeID   String
+    storeName String?
+    tiiID     String?
+
+    store Store @relation(fields: [storeID], references: [code])
 }
 
 model Store {
@@ -26,4 +32,6 @@ model Store {
 
     latitude  Float?
     longitude Float?
+
+    TestResult TestResult[]
 }
